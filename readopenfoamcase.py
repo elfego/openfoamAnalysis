@@ -1,22 +1,20 @@
-from os.path import join, exists
-from numpy import arange, array
+from os.path import join, exists, makedirs
+from numpy import arange, array, r_, pi, cbrt, sum, save, sqrt, dot
+from numpy.linalg import norm
 import re
 import openfoamparser as Ofpp
+from misctools import calc_val_weighted
+
+#
+
+#
 
 #
 
 
-class OFphase:
-    def __init__(self, name, transport_model, viscosity, density):
-        self.name = name
-        self.transport_model = transport_model
-        self.viscosity = viscosity
-        self.density = density
-        
-
 class readOFcase:
     def __init__(self, case_dir=None):
-        if not case_dir is None:
+        if case_dir is not None:
             self.setup(case_dir)
 
     def setup(self, case_dir):
@@ -34,7 +32,24 @@ class readOFcase:
         self.transport_properties = {p: self.get_properties(p)
                                      for p in phases}
         self.g = self.get_gravity()
-        
+        self.out_dir = join(case_dir, 'postProcessing')
+
+        self.C = self.load_field('C', '0.orig')
+        self.V = self.load_field('V', '0.orig')
+
+    def load_field(self, field_name, path):
+        ifile = join(self.case_dir, path, field_name)
+        if exists(ifile):
+            field = Ofpp.parse_boundary_field(ifile)
+        else:
+            field = None
+            raise FileExistsError
+        return field
+
+    def set_nozzle_radius(self, nozzle_radius):
+        self.Rnozzle = nozzle_radius
+        return None
+
     def list_time_dirs(self):
         with open(join(self.system_dir, 'controlDict'), 'r') as handler:
             for ln in handler.readlines():
@@ -57,7 +72,7 @@ class readOFcase:
                 ln2 = ln.split(' ')
                 if ln2[0] == 'application':
                     return ln2[1][:-2]
-            
+
     def get_phases(self):
         with open(join(self.constant_dir, 'transportProperties'), 'r') as handler:
             for ln in handler.readlines():
@@ -76,7 +91,7 @@ class readOFcase:
                     if result != float(' '.join(ln2[1:])[:-2]):
                         print('Surface tensions are unequal!')
                     return result
-            
+
     def get_properties(self, phase):
         with open(join(self.constant_dir, 'transportProperties'), 'r') as handler:
             lns = ''.join(handler.readlines())
@@ -105,7 +120,64 @@ class readOFcase:
             tmp, = re.findall('\([^\)]*\)', tmp)
             return array(list(map(float, tmp[1:-1].split(' '))))
 
+    def compute_dimensinless_numbers(self, time):
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        nu1 = self.transport_properties['alpha.pregel']['viscosity']
+        nu2 = self.transport_properties['alpha.crosslinker']['viscosity']
+
+        rho1 = self.transport_properties['alpha.pregel']['density']
+        rho2 = self.transport_properties['alpha.crosslinker']['density']
+
+        alpha1 = self.load_field('alpha.pregel', t_dir)
+        alpha2 = self.load_field('alpha.crosslinker', t_dir)
+        alpha3 = self.load_field('alpha.air', t_dir)
+        U      = self.load_field('U', t_dir)
+
+        dv1 = alpha1 * self.V
+        dv2 = alpha2 * self.V
+
+        V1 = sum(dv1)
+        save(join(o_dir,      'V.pregel.npy'), r_[V1, 2. * cbrt(0.75 * V1 / pi)])
+        V2 = sum(dv2)
+        save(join(o_dir, 'V.crosslinker.npy'), r_[V2, 2. * cbrt(0.75 * V2 / pi)])
+
+        X1 = calc_val_weighted(self.C, dv1,
+                               normalised=True,
+                               fsave=join(o_dir, 'X.pregel.npy'))
+        X2 = calc_val_weighted(self.C, dv2,
+                               normalised=True,
+                               fsave=join(o_dir, 'X.crosslinker.npy'))
+
+        U1 = calc_val_weighted(U, dv1,
+                               normalised=True,
+                               fsave=join(o_dir, 'U.pregel.npy'))
+        U2 = calc_val_weighted(U, dv2,
+                               normalised=True,
+                               fsave=join(o_dir, 'U.crosslinker.npy'))
+
+        Ur = norm(U2 - U1)
+
+        Ucm = (V1 * U1 + V2 * U2) / (V1 + V2)
+        save(join(o_dir, 'Ucm.npy'), Ucm)
+
+        b1 = norm(X2 - X1)
+        b2 = dot(U2 - U1, X2 - X1) / Ur
+        save(join(o_dir, 'distance.npy'), r_[b1, b2])
+        b = sqrt(b1 ** 2 - b2 ** 2)
+
+        B = 0.5 * b / self.Rnozzle
+        save(join(o_dir, 'impact_param.npy'), r_[b, B])
+
+        We_collision = (rho1 + rho2) * self.Rnozzle * Ur * Ur / self.surface_tension
+        Re_collision = 4 * self.Rnozzle * Ur / (nu1 + nu2)
+        save(join(o_dir, 'We_Re.npy'), r_[We_collision, Re_collision])
+
+
 #
+
 
 rc = readOFcase('/DataB/mix_L2/base')
 print(rc.g)
