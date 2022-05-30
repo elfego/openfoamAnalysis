@@ -174,7 +174,33 @@ class readOFcase:
         We_collision = (rho1 + rho2) * self.Rnozzle * Ur * Ur / self.surface_tension
         Re_collision = 4 * self.Rnozzle * Ur / (nu1 + nu2)
         save(join(o_dir, 'We_Re.npy'), r_[We_collision, Re_collision])
+        return None
 
+    def calc_mixture_measures(self, time):
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        alpha1 = self.load_field('alpha.pregel', t_dir)
+        alpha2 = self.load_field('alpha.crosslinker', t_dir)
+        gradAlpha1 = self.load_field('grad(alpha.pregel)', t_dir)
+        gradAlpha2 = self.load_field('grad(alpha.crosslinker)', t_dir)
+
+        dv1 = alpha1 * self.V
+        dv2 = alpha2 * self.V
+
+        magGradAlpha1 = norm(gradAlpha1, axis=1)
+        magGradAlpha2 = norm(gradAlpha2, axis=1)
+
+        A_c = dot(magGradAlpha2, dv1) + dot(magGradAlpha1, dv2)
+        save(join(o_dir, 'surfaceDensityFunction.npy'), A_c)
+        V_m = 4 * dot(alpha1, dv2)
+        save(join(o_dir, 'mixtureVolume'), V_m)
+        E_mu = self.diffusivity * (dot(magGradAlpha2**2, dv1) +
+                                   dot(magGradAlpha1**2, dv2))
+        save(join(o_dir, 'scalarDissipationRate.npy'), E_mu)
+
+        return None
 
 #
 
