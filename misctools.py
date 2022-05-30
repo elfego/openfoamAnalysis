@@ -1,4 +1,9 @@
 from numpy import sum, dot, save
+from numpy.linalg import det
+
+
+def calc_3rd_inv(A_flat):
+    return -det(A_flat.reshape((3, 3)))
 
 
 def calc_val_weighted(X, dV, normalised=False, fsave=None):

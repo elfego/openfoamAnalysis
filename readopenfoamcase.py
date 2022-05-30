@@ -1,9 +1,10 @@
-from os.path import join, exists, makedirs
-from numpy import arange, array, r_, pi, cbrt, sum, save, sqrt, dot
-from numpy.linalg import norm
+from os.path import join, exists
+from os import makedirs
+from numpy import arange, array, r_, pi, cbrt, sum, save, load, sqrt, dot, zeros_like, savez_compressed
+from numpy.linalg import norm, det
 import re
 import openfoamparser as Ofpp
-from misctools import calc_val_weighted
+from misctools import calc_val_weighted, calc_3rd_inv
 
 #
 
@@ -34,13 +35,26 @@ class readOFcase:
         self.g = self.get_gravity()
         self.out_dir = join(case_dir, 'postProcessing')
 
+        self.mesh_loaded = False
+
+    def load_mesh(self):
+        self.mesh_loaded = True
         self.C = self.load_field('C', '0.orig')
         self.V = self.load_field('V', '0.orig')
 
     def load_field(self, field_name, path):
         ifile = join(self.case_dir, path, field_name)
         if exists(ifile):
-            field = Ofpp.parse_boundary_field(ifile)
+            field = Ofpp.parse_internal_field(ifile)
+        else:
+            field = None
+            raise FileExistsError
+        return field
+
+    def load_post_field(self, field_name, path):
+        ifile = join(self.out_dir, path, field_name)
+        if exists(ifile):
+            field = load(ifile)
         else:
             field = None
             raise FileExistsError
@@ -120,21 +134,24 @@ class readOFcase:
             tmp, = re.findall('\([^\)]*\)', tmp)
             return array(list(map(float, tmp[1:-1].split(' '))))
 
-    def compute_dimensinless_numbers(self, time):
+    def calc_dimensinless_numbers(self, time):
         t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
 
-        nu1 = self.transport_properties['alpha.pregel']['viscosity']
-        nu2 = self.transport_properties['alpha.crosslinker']['viscosity']
+        nu1 = self.transport_properties['pregel']['viscosity']
+        nu2 = self.transport_properties['crosslinker']['viscosity']
 
-        rho1 = self.transport_properties['alpha.pregel']['density']
-        rho2 = self.transport_properties['alpha.crosslinker']['density']
+        rho1 = self.transport_properties['pregel']['density']
+        rho2 = self.transport_properties['crosslinker']['density']
 
         alpha1 = self.load_field('alpha.pregel', t_dir)
         alpha2 = self.load_field('alpha.crosslinker', t_dir)
         alpha3 = self.load_field('alpha.air', t_dir)
         U      = self.load_field('U', t_dir)
+
+        if not self.mesh_loaded:
+            self.load_mesh()
 
         dv1 = alpha1 * self.V
         dv2 = alpha2 * self.V
@@ -186,6 +203,9 @@ class readOFcase:
         gradAlpha1 = self.load_field('grad(alpha.pregel)', t_dir)
         gradAlpha2 = self.load_field('grad(alpha.crosslinker)', t_dir)
 
+        if not self.mesh_loaded:
+            self.load_mesh()
+
         dv1 = alpha1 * self.V
         dv2 = alpha2 * self.V
 
@@ -202,8 +222,71 @@ class readOFcase:
 
         return None
 
+    def calc_classification(self, time):
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        Q = self.load_field('Q', t_dir)
+        R = self.load_post_field('3rd_invariant.npy', time)
+        n = 2 * (R > zeros_like(R)) + (4 * Q ** 3 + 27 * R ** 2 > zeros_like(Q))
+        savez_compressed(join(o_dir, 'classification.npz'), n)
+
+    def calc_R(self, time):
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        gradU = self.load_field('grad(U)', t_dir)
+        R = array(list(map(calc_3rd_inv, gradU)))
+        save(join(o_dir, '3rd_invariant.npy'), R)
+
+    def forAllTimes(self, func, *args, **kwargs):
+        for e, t in zip(self.existing, self.times):
+            if not e:
+                print('Skipping', t, '...')
+                continue
+            print(t, ' : ', func.__name__, '...')
+            func(t, *args, **kwargs)
+
+    def calc_visc_dissipation(self, time):
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        enstrophy = self.load_field('enstrophy', t_dir)
+        Q = self.load_field('Q', t_dir)
+        eps = 2.0 *(enstrophy - 2 * Q)
+        save(join(o_dir, 'visc_dissipation.npy'), eps)
+
+    def calc_eigprojection(self, time):
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        alpha1 = self.load_field('alpha.crosslinker', time)
+        gradAlpha1 = self.load_field('grad(alpha.crosslinker)', time)
+
+        alpha2 = self.load_field('alpha.pregel', time)
+        gradAlpha2 = self.load_field('grad(alpha.pregel)', time)
+
+        dsigma = (alpha1 * gradAlpha2 - alpha2 * gradAlpha1) * self.V
+
+        evecs = self.load_post_field('eigenvectorsGradU.npy', time)
+
+
+
 #
 
 
-rc = readOFcase('/DataB/mix_L2/base')
-print(rc.g)
+rc = readOFcase('/home/vvmv9/workspace/OFSims/mix_L1/ur-6')
+rc.set_nozzle_radius(2.5e-4)
+# rc.calc_dimensinless_numbers('0.001')
+# rc.calc_mixture_measures('0.001')
+# rc.calc_visc_dissipation('0.001')
+# rc.forAllTimes(rc.calc_R)
+# rc.forAllTimes(rc.calc_classification)
+# rc.forAllTimes(rc.calc_visc_dissipation)
+# rc.forAllTimes(rc.calc_mixture_measures)
+# rc.forAllTimes(rc.calc_dimensinless_numbers)
+
