@@ -1,11 +1,12 @@
 from os.path import join, exists
 from os import makedirs
-from numpy import (arange, array, r_, pi, cbrt, sum, save, savez_compressed,
+from re import findall
+from numpy import (arange, array, r_, sum, save, savez_compressed,
                    load, sqrt, dot, zeros, zeros_like)
-from numpy.linalg import norm, det, eigh
-import re
-import openfoamparser as Ofpp
-from misctools import calc_val_weighted, calc_3rd_inv, dSigma, normalise, local_eigensystem
+from numpy.linalg import norm
+from openfoamparser import parse_internal_field
+from misctools import (calc_val_weighted, calc_3rd_inv, dSigma,
+                       local_eigensystem)
 
 
 class readOFcase:
@@ -40,7 +41,7 @@ class readOFcase:
     def load_field(self, field_name, path):
         ifile = join(self.case_dir, path, field_name)
         if exists(ifile):
-            field = Ofpp.parse_internal_field(ifile)
+            field = parse_internal_field(ifile)
         else:
             field = None
             raise FileExistsError
@@ -106,11 +107,11 @@ class readOFcase:
             lns = ''.join(handler.readlines())
             tmp = lns.split('phases')[1]
 
-            tmp, = re.findall(phase + '\s*\{[^\}]*\}', tmp)
+            tmp, = findall(phase + '\s*\{[^\}]*\}', tmp)
 
-            transport_model = re.findall('transportModel\s*\w*', tmp)[0].split(' ')[-1]
-            viscosity = float(re.findall('nu\s*[^\;]*;', tmp)[0].split(' ')[-1][:-1])
-            density = float(re.findall('rho\s*[^\;]*;', tmp)[0].split(' ')[-1][:-1])
+            transport_model = findall('transportModel\s*\w*', tmp)[0].split(' ')[-1]
+            viscosity = float(findall('nu\s*[^\;]*;', tmp)[0].split(' ')[-1][:-1])
+            density = float(findall('rho\s*[^\;]*;', tmp)[0].split(' ')[-1][:-1])
 
         return {'transportModel': transport_model,
                 'viscosity': viscosity,
@@ -119,14 +120,14 @@ class readOFcase:
     def get_diffusivity(self):
         with open(join(self.constant_dir, 'transportProperties'), 'r') as handler:
             lns = ''.join(handler.readlines())
-            D = float(re.findall('D23\s*[^\;]*;', lns)[0].split(' ')[-1][:-1])
+            D = float(findall('D23\s*[^\;]*;', lns)[0].split(' ')[-1][:-1])
             return D
 
     def get_gravity(self):
         with open(join(self.constant_dir, 'g'), 'r') as handler:
             lns = ''.join(handler.readlines())
-            tmp, = re.findall('value\s*\([^\(]*\)', lns)
-            tmp, = re.findall('\([^\)]*\)', tmp)
+            tmp, = findall('value\s*\([^\(]*\)', lns)
+            tmp, = findall('\([^\)]*\)', tmp)
             return array(list(map(float, tmp[1:-1].split(' '))))
 
     def forAllTimes(self, func, *args, **kwargs):
@@ -173,12 +174,12 @@ class readOFcase:
         dv1 = alpha1 * self.V
         dv2 = alpha2 * self.V
 
-        X1 = calc_val_weighted(self.C, dv1,
-                               normalised=True,
-                               fsave=join(o_dir, 'X.pregel.npy'))
-        X2 = calc_val_weighted(self.C, dv2,
-                               normalised=True,
-                               fsave=join(o_dir, 'X.crosslinker.npy'))
+        calc_val_weighted(self.C, dv1,
+                          normalised=True,
+                          fsave=join(o_dir, 'X.pregel.npy'))
+        calc_val_weighted(self.C, dv2,
+                          normalised=True,
+                          fsave=join(o_dir, 'X.crosslinker.npy'))
 
     def calc_Ucm(self, time):
         t_dir = join(self.case_dir, time)
@@ -211,7 +212,6 @@ class readOFcase:
         save(join(o_dir, 'Ucm.npy'), Ucm)
 
     def calc_impact_parameter(self, time):
-        t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
 
@@ -233,7 +233,6 @@ class readOFcase:
         save(join(o_dir, 'impact_param.npy'), r_[b, B])
 
     def calc_Reynolds(self, time):
-        t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
 
@@ -251,7 +250,6 @@ class readOFcase:
         save(join(o_dir, 'Re_collision.npy'), Re_collision)
 
     def calc_Weber(self, time):
-        t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
 
@@ -265,21 +263,21 @@ class readOFcase:
         rho1 = self.transport_properties['pregel']['density']
         rho2 = self.transport_properties['crosslinker']['density']
 
-        We_collision = (rho1 + rho2) * self.Rnozzle * Ur * Ur / self.surface_tension
+        We_collision = (rho1 + rho2) * self.Rnozzle * \
+            Ur * Ur / self.surface_tension
         save(join(o_dir, 'We_collision.npy'), We_collision)
 
     def calc_dSigma(self, time):
-        t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
 
         if exists(join(o_dir, 'dSigma.npy')):
             return None
 
-        alpha1     = self.load_field(     'alpha.crosslinker',  time)
-        alpha2     = self.load_field(          'alpha.pregel',  time)
+        alpha1 = self.load_field('alpha.crosslinker', time)
+        alpha2 = self.load_field('alpha.pregel', time)
         gradAlpha1 = self.load_field('grad(alpha.crosslinker)', time)
-        gradAlpha2 = self.load_field(     'grad(alpha.pregel)', time)
+        gradAlpha2 = self.load_field('grad(alpha.pregel)', time)
 
         if not self.mesh_loaded:
             self.load_mesh()
@@ -288,7 +286,6 @@ class readOFcase:
         save(join(o_dir, 'dSigma.npy'), dS)
 
     def calc_contact_area(self, time):
-        t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
 
@@ -316,7 +313,6 @@ class readOFcase:
         dChi = 4.0 * alpha1 * alpha2 * self.V
         save(join(o_dir, 'mixtureVolume.npy'), sum(dChi))
 
-
     def calc_dissipation_rate(self, time):
         t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
@@ -327,8 +323,10 @@ class readOFcase:
 
         alpha1 = self.load_field('alpha.pregel', t_dir)
         alpha2 = self.load_field('alpha.crosslinker', t_dir)
-        magGradAlpha1 = norm(self.load_field('grad(alpha.pregel)', t_dir), axis=1)
-        magGradAlpha2 = norm(self.load_field('grad(alpha.crosslinker)', t_dir), axis=1)
+        magGradAlpha1 = norm(self.load_field('grad(alpha.pregel)', t_dir),
+                             axis=1)
+        magGradAlpha2 = norm(self.load_field('grad(alpha.crosslinker)', t_dir),
+                             axis=1)
 
         if not self.mesh_loaded:
             self.load_mesh()
@@ -364,7 +362,8 @@ class readOFcase:
 
         Q = self.load_field('Q', t_dir)
         R = self.load_post_field('3rd_invariant.npy', time)
-        n = 2 * (R > zeros_like(R)) + (4 * Q ** 3 + 27 * R ** 2 > zeros_like(Q))
+        n = 2 * (R > zeros_like(R)) +\
+            (4 * Q ** 3 + 27 * R ** 2 > zeros_like(Q))
         savez_compressed(join(o_dir, 'classification.npz'), n)
         return None
 
@@ -378,12 +377,11 @@ class readOFcase:
 
         enstrophy = self.load_field('enstrophy', t_dir)
         Q = self.load_field('Q', t_dir)
-        eps = 2.0 *(enstrophy - 2 * Q)
+        eps = 2.0 * (enstrophy - 2.0 * Q)
         save(join(o_dir, 'visc_dissipation_density.npy'), eps)
         return None
 
     def calc_eigensystem(self, time):
-        t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
 
@@ -406,7 +404,6 @@ class readOFcase:
         return None
 
     def calc_eigprojection(self, time):
-        t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
 
@@ -428,7 +425,6 @@ class readOFcase:
         return pE1, pE3
 
     def calc_topology_contact_surface(self, time):
-        t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
 
@@ -438,6 +434,6 @@ class readOFcase:
         C = self.load_post_field('classification.npz', time)
         dS = norm(self.load_post_field('dSigma.npy', time), axis=1)
 
-        Cs = np.array([dot(C == i, dS) for i in range(4)])
+        Cs = array([dot(C == i, dS) for i in range(4)])
         save(join(o_dir, 'surface_area_topology.npy'), Cs)
         return None
