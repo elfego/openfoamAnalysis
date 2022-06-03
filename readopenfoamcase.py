@@ -2,7 +2,8 @@ from os.path import join, exists
 from os import makedirs
 from re import findall
 from numpy import (arange, array, r_, sum, save, savez_compressed,
-                   load, sqrt, dot, zeros, zeros_like, vstack)
+                   load, sqrt, dot, zeros, zeros_like, ones_like,
+                   vstack)
 from numpy.linalg import norm
 from openfoamparser import parse_internal_field
 from misctools import (calc_val_weighted, calc_2nd_inv, calc_3rd_inv,
@@ -194,6 +195,7 @@ class readOFcase:
 
         if (exists(join(o_dir, 'U.pregel.npy')) and
             exists(join(o_dir, 'U.crosslinker.npy')) and
+            exists(join(o_dir, 'Ucm.npy')) and
             not overwrite):
             return None
 
@@ -369,8 +371,9 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
 
-        dChi = 4.0 * alpha1 * alpha2 * self.V
-        save(join(o_dir, 'mixtureVolume.npy'), sum(dChi))
+        save(join(o_dir, 'mixtureVolume.npy'),
+             sum(4.0 * alpha1 * alpha2 * self.V))
+        return None
 
     def calc_dissipation_rate(self, time, overwrite=False):
         t_dir = join(self.case_dir, time)
@@ -425,6 +428,30 @@ class readOFcase:
              2.0 * (enstrophy - 2.0 * Q))
         return None
 
+    def calc_visc_dissipation(self, time, overwrite=False):
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        if exists(join(o_dir, 'visc_dissipation.npy')) and not overwrite:
+            return None
+
+        alpha1 = self.load_field('alpha.pregel', t_dir)
+        rho1 = self.transport_properties['pregel']['density']
+        nu1 = self.transport_properties['pregel']['viscosity']
+
+        alpha2 = self.load_field('alpha.crosslinker', t_dir)
+        rho2 = self.transport_properties['crosslinker']['density']
+        nu2 = self.transport_properties['crosslinker']['viscosity']
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+
+        eps = self.load_post_field('visc_dissipation_density.npy', time)
+        save(join(o_dir, 'visc_dissipation.npy'),
+             dot(eps * self.V, rho1 * nu1 * alpha1 + rho2 * nu2 * alpha2))
+        return None
+
     def calc_eigensystem(self, time, overwrite=False):
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
@@ -477,11 +504,11 @@ class readOFcase:
         if exists(join(o_dir, 'surface_area_topology.npy')) and not overwrite:
             return None
 
-        C = self.load_post_field('classification.npz', time)
+        C = self.load_post_field('classification.npz', time)['arr_0']
         dS = norm(self.load_post_field('dSigma.npy', time), axis=1)
 
-        Cs = array([dot(C == i, dS) for i in range(4)])
-        save(join(o_dir, 'surface_area_topology.npy'), Cs)
+        save(join(o_dir, 'surface_area_topology.npy'),
+             array([dot(C == i, dS) for i in range(4)]))
         return None
 
     def calc_vortprojection(self, time, overwrite=False):
@@ -493,5 +520,49 @@ class readOFcase:
 
         W = self.load_post_field('vorticity.npy', time)
         dS = self.load_post_field('dSigma.npy', time)
-        save(join(o_dir, 'w_dot_n.npy'), abs(sum(W * dS, axis=1)))
+        magW = norm(W, axis=1)
+        save(join(o_dir, 'w_dot_n.npy'),
+             sum(abs(sum(W * dS, axis=1) / magW)))
         return None
+
+    def calc_surface_energy(self, time, overwrite=False):
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        if exists(join(o_dir, 'surface_energy.npy')) and not overwrite:
+            return None
+
+        gradAlpha1 = self.load_field('grad(alpha.pregel)', t_dir)
+        gradAlpha2 = self.load_field('grad(alpha.crosslinker)', t_dir)
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+
+        save(join(o_dir, 'surface_energy.npy'),
+             self.surface_tension * dot(self.V, norm(gradAlpha1 + gradAlpha2, axis=1)))
+        return None
+
+    def calc_kinetic_energy(self, time, overwrite=False):
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        if exists(join(o_dir, 'kinetic_energy.npy')) and not overwrite:
+            return None
+
+        U = self.load_field('U', t_dir)
+
+        alpha1 = self.load_field('alpha.pregel', t_dir)
+        rho1 = self.transport_properties['pregel']['density']
+
+        alpha2 = self.load_field('alpha.crosslinker', t_dir)
+        rho2 = self.transport_properties['crosslinker']['density']
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+
+        save(join(o_dir, 'kinetic_energy.npy'),
+             0.5 * dot(rho1 * alpha1 + rho2 * alpha2, self.V * norm(U, axis=1)**2))
+        return None
+

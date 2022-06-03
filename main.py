@@ -30,10 +30,13 @@ def main():
     rc.forAllTimes(rc.calc_R, interval=interval)
     rc.forAllTimes(rc.calc_classification, interval=interval)
     rc.forAllTimes(rc.calc_visc_dissipation_density, interval=interval)
+    rc.forAllTimes(rc.calc_visc_dissipation, interval=interval)
     rc.forAllTimes(rc.calc_eigensystem, interval=interval)
     rc.forAllTimes(rc.calc_eigprojection, interval=interval)
     rc.forAllTimes(rc.calc_topology_contact_surface, interval=interval)
-    rc.forAllTimes(rc.calc_vortprojection, interval=interval)
+    rc.forAllTimes(rc.calc_vortprojection, interval=interval, overwrite=True)
+    rc.forAllTimes(rc.calc_surface_energy, interval=interval)
+    rc.forAllTimes(rc.calc_kinetic_energy, interval=interval)
 
 
 if __name__ == '__main__':
