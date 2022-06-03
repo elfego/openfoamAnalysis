@@ -5,25 +5,31 @@ from readopenfoamcase import readOFcase
 
 
 def main():
-    rc = readOFcase(sys.argv[1])
+    case = sys.argv[1]
+    interval = None
+    for i in range(2, len(sys.argv)):
+        if '--range' == sys.argv[i] and len(sys.argv) >= i + 1:
+            interval = list(map(int, sys.argv[i + 1].split(':')))
+
+    rc = readOFcase(case)
     rc.set_nozzle_radius(2.5e-4)
 
-    rc.forAllTimes(rc.calc_droplet_volumes)
-    rc.forAllTimes(rc.calc_Xcm)
-    rc.forAllTimes(rc.calc_Ucm)
-    rc.forAllTimes(rc.calc_impact_parameter)
-    rc.forAllTimes(rc.calc_Reynolds)
-    rc.forAllTimes(rc.calc_Weber)
-    rc.forAllTimes(rc.calc_dSigma)
-    rc.forAllTimes(rc.calc_contact_area)
-    rc.forAllTimes(rc.calc_volume_mixture)
-    rc.forAllTimes(rc.calc_dissipation_rate)
-    rc.forAllTimes(rc.calc_R)
-    rc.forAllTimes(rc.calc_classification)
-    rc.forAllTimes(rc.calc_visc_dissipation_density)
-    rc.forAllTimes(rc.calc_eigensystem)
-    rc.forAllTimes(rc.calc_eigprojection)
-    rc.forAllTimes(rc.calc_topology_contact_surface)
+    rc.forAllTimes(rc.calc_droplet_volumes, interval=interval)
+    rc.forAllTimes(rc.calc_Xcm, interval=interval)
+    rc.forAllTimes(rc.calc_Ucm, interval=interval)
+    rc.forAllTimes(rc.calc_impact_parameter, interval=interval)
+    rc.forAllTimes(rc.calc_Reynolds, interval=interval)
+    rc.forAllTimes(rc.calc_Weber, interval=interval)
+    rc.forAllTimes(rc.calc_dSigma, interval=interval)
+    rc.forAllTimes(rc.calc_contact_area, interval=interval)
+    rc.forAllTimes(rc.calc_volume_mixture, interval=interval)
+    rc.forAllTimes(rc.calc_dissipation_rate, interval=interval)
+    rc.forAllTimes(rc.calc_R, interval=interval)
+    rc.forAllTimes(rc.calc_classification, interval=interval)
+    rc.forAllTimes(rc.calc_visc_dissipation_density, interval=interval)
+    rc.forAllTimes(rc.calc_eigensystem, interval=interval)
+    rc.forAllTimes(rc.calc_eigprojection, interval=interval)
+    rc.forAllTimes(rc.calc_topology_contact_surface, interval=interval)
 
 
 if __name__ == '__main__':

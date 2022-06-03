@@ -130,8 +130,12 @@ class readOFcase:
             tmp, = findall('\([^\)]*\)', tmp)
             return array(list(map(float, tmp[1:-1].split(' '))))
 
-    def forAllTimes(self, func, *args, **kwargs):
-        for e, t in zip(self.existing, self.times):
+    def forAllTimes(self, func, *args, interval=None, **kwargs):
+        ran = zip(self.existing, self.times)
+        if interval is not None:
+            ran = zip(self.existing[interval[0]:interval[1]],
+                      self.times[interval[0]:interval[1]])
+        for e, t in ran:
             if not e:
                 print('Skipping', t, '...')
                 continue
