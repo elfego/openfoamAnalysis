@@ -14,6 +14,9 @@ def main():
     rc = readOFcase(case)
     rc.set_nozzle_radius(2.5e-4)
 
+    rc.forAllTimes(rc.calc_vorticity, interval=interval)
+    rc.forAllTimes(rc.calc_enstrophy, interval=interval)
+    rc.forAllTimes(rc.calc_Q, interval=interval)
     rc.forAllTimes(rc.calc_droplet_volumes, interval=interval)
     rc.forAllTimes(rc.calc_Xcm, interval=interval)
     rc.forAllTimes(rc.calc_Ucm, interval=interval)
@@ -30,6 +33,7 @@ def main():
     rc.forAllTimes(rc.calc_eigensystem, interval=interval)
     rc.forAllTimes(rc.calc_eigprojection, interval=interval)
     rc.forAllTimes(rc.calc_topology_contact_surface, interval=interval)
+    rc.forAllTimes(rc.calc_vortprojection, interval=interval)
 
 
 if __name__ == '__main__':

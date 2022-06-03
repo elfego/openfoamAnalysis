@@ -1,9 +1,21 @@
-from numpy import sum, dot, save, nditer, zeros_like, hstack
+from numpy import sum, dot, save, nditer, zeros_like, hstack, array, trace
 from numpy.linalg import det, eigh, norm
 import numba_scipy
 from numba import jit, prange, float64
 
 
+@jit(nopython=True, cache=True, fastmath=True, nogil=True)
+def calc_1st_inv(A_flat):
+    return trace(A_flat.reshape((3, 3)))
+
+
+@jit(nopython=True, cache=True, fastmath=True, nogil=True)
+def calc_2nd_inv(A_flat):
+    A = A_flat.reshape((3, 3))
+    return -0.5 * trace(A @ A)
+
+
+@jit(nopython=True, cache=True, fastmath=True, nogil=True)
 def calc_3rd_inv(A_flat):
     return -det(A_flat.reshape((3, 3)))
 
@@ -18,12 +30,13 @@ def calc_val_weighted(X, dV, normalised=False, fsave=None):
 
 
 @jit(nopython=True, cache=True, fastmath=True, nogil=True)
-def get_vorticity(A):
-    return np.real(np.array([
+def get_vorticity(gradU):
+    A = gradU.reshape(3, 3)
+    return array([
         A[2, 1] - A[1, 2],
         A[0, 2] - A[2, 0],
         A[1, 0] - A[0, 1]
-    ]))
+    ])
 
 
 @jit(nopython=True, cache=True, fastmath=True, nogil=True)
