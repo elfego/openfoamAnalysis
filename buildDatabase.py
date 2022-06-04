@@ -48,7 +48,9 @@ preDatabase = {
     'topology surf area 3': [],
     'most expansive proj': [],
     'most compressive proj': [],
-    'vort proj': []
+    'vort proj': [],
+    'surface energy': [],
+    'kinetic energy': []
 }
 
 print("Iterating over the results.")
@@ -106,6 +108,12 @@ for time in times:
 
     tmp = np.load(join(read_dir, 'w_dot_n.npy'))
     preDatabase['vort proj'].append(tmp / Sc)
+
+    tmp = np.load(join(read_dir, 'surface_energy.npy'))
+    preDatabase['surface energy'].append(tmp)
+
+    tmp = np.load(join(read_dir, 'kinetic_energy.npy'))
+    preDatabase['kinetic energy'].append(tmp)
 
 print("Done extracting the values. Building database.")
 df = pd.DataFrame(preDatabase)
