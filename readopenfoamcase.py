@@ -372,7 +372,7 @@ class readOFcase:
             self.load_mesh()
 
         save(join(o_dir, 'mixtureVolume.npy'),
-             sum(4.0 * alpha1 * alpha2 * self.V))
+             4.0 * sum(alpha1 * alpha2 * self.V))
         return None
 
     def calc_dissipation_rate(self, time, overwrite=False):

@@ -38,6 +38,9 @@ preDatabase = {
     'visc dissipation': [],
     'contact surface area': [],
     'velocity centre of mass': [],
+    'velocity pregel':, [],
+    'velocity crosslinker': [],
+    'Ur': [],
     'volume crosslinker': [],
     'volume pregel': [],
     'We': [],
@@ -59,7 +62,7 @@ for time in times:
     print(time)
     read_dir = join(case_dir, 'postProcessing', time)
     if not exists(read_dir):
-        print('Skipping')
+        print('  ---->  Skipping')
         continue
 
     preDatabase['time'].append(float(time))
@@ -72,6 +75,12 @@ for time in times:
 
     tmp = np.load(join(read_dir, 'Ucm.npy'))
     preDatabase['velocity centre of mass'].append(np.linalg.norm(tmp))
+
+    U1 = np.load(join(read_dir, 'U.pregel.npy'))
+    U2 = np.load(join(read_dir, 'U.crosslinker'))
+    preDatabase['velocity pregel'].append(np.linalg.norm(U1))
+    preDatabase['velocity crosslinker'].append(np.linalg.norm(U2))
+    preDatabase['Ur'].append(np.linalg.norm(U2 - U1))
 
     V1 = np.load(join(read_dir, 'V.crosslinker.npy'))
     V2 = np.load(join(read_dir, 'V.pregel.npy'))
