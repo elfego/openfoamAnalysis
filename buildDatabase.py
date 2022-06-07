@@ -38,7 +38,7 @@ preDatabase = {
     'visc dissipation': [],
     'contact surface area': [],
     'velocity centre of mass': [],
-    'velocity pregel':, [],
+    'velocity pregel': [],
     'velocity crosslinker': [],
     'Ur': [],
     'volume crosslinker': [],
@@ -77,7 +77,7 @@ for time in times:
     preDatabase['velocity centre of mass'].append(np.linalg.norm(tmp))
 
     U1 = np.load(join(read_dir, 'U.pregel.npy'))
-    U2 = np.load(join(read_dir, 'U.crosslinker'))
+    U2 = np.load(join(read_dir, 'U.crosslinker.npy'))
     preDatabase['velocity pregel'].append(np.linalg.norm(U1))
     preDatabase['velocity crosslinker'].append(np.linalg.norm(U2))
     preDatabase['Ur'].append(np.linalg.norm(U2 - U1))
@@ -127,9 +127,9 @@ for time in times:
 print("Done extracting the values. Building database.")
 df = pd.DataFrame(preDatabase)
 
-print("Saving database as",
-      join(case_dir, 'postProcessing', 'measurements'))
+savefile = join(case_dir, 'measurements.pkl')
+print("Saving database as", savefile)
 
-df.to_csv(   join(case_dir, 'postProcessing', 'measurements.csv'))
-df.to_pickle(join(case_dir, 'postProcessing', 'measurements.pkl'))
+df.to_csv(savefile[:-3] + 'csv')
+df.to_pickle(savefile)
 
