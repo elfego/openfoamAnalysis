@@ -134,6 +134,7 @@ class readOFcase:
     def forAllTimes(self, func, *args, interval=None, **kwargs):
         ran = zip(self.existing, self.times)
         if interval is not None:
+            interval[1] = min(len(self.times), interval[1])
             ran = zip(self.existing[interval[0]:interval[1]],
                       self.times[interval[0]:interval[1]])
         for e, t in ran:
