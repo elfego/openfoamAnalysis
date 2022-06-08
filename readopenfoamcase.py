@@ -457,7 +457,6 @@ class readOFcase:
         makedirs(o_dir, exist_ok=True)
 
         if (exists(join(o_dir, 'eigenvector_1.npy')) and
-            exists(join(o_dir, 'eigenvector_2.npy')) and
             exists(join(o_dir, 'eigenvector_3.npy')) and
             exists(join(o_dir, 'eigenvalues.npy')) and
             not overwrite):
@@ -470,7 +469,6 @@ class readOFcase:
             W[i] = local_eigensystem(gradU[i])
 
         save(join(o_dir, 'eigenvector_1.npy'), W[:,  0:3])
-        save(join(o_dir, 'eigenvector_2.npy'), W[:,  3:6])
         save(join(o_dir, 'eigenvector_3.npy'), W[:,  6:9])
         save(join(o_dir,   'eigenvalues.npy'), W[:, 9:12])
         return None
