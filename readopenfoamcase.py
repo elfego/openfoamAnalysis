@@ -510,6 +510,34 @@ class readOFcase:
              array([dot(C == i, dS) for i in range(4)]))
         return None
 
+    def calc_topology_diffusive(self, time, overwrite=False):
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        if exists(join(o_dir, 'diffusive_topology.npy')) and not overwrite:
+            return None
+
+        C = self.load_post_field('classification.npz', time)['arr_0']
+        dV = self.load_post_field('scalarDissipationRate.npy', time)
+
+        save(join(o_dir, 'diffusive_topology.npy'),
+             array([dot(C == i, dV) for i in range(4)]))
+        return None
+
+    def calc_topology_mixture_volume(self, time, overwrite=False):
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        if exists(join(o_dir, 'mixing_topology.npy')) and not overwrite:
+            return None
+
+        C = self.load_post_field('classification.npz', time)['arr_0']
+        dV = self.load_post_field('mixtureVolume.npy', time)
+
+        save(join(o_dir, 'mixing_topology.npy'),
+             array([dot(C == i, dV) for i in range(4)]))
+        return None
+
     def calc_vortprojection(self, time, overwrite=False):
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
@@ -537,9 +565,10 @@ class readOFcase:
 
         if not self.mesh_loaded:
             self.load_mesh()
+        w = self.C[:, 3] >= 0.0002 * ones_like(self.C[:, 3])
 
         save(join(o_dir, 'surface_energy.npy'),
-             self.surface_tension * dot(self.V, norm(gradAlpha1 + gradAlpha2, axis=1)))
+             self.surface_tension * dot(self.V * w, norm(gradAlpha1 + gradAlpha2, axis=1)))
         return None
 
     def calc_kinetic_energy(self, time, overwrite=False):
@@ -564,4 +593,42 @@ class readOFcase:
         save(join(o_dir, 'kinetic_energy.npy'),
              0.5 * dot(rho1 * alpha1 + rho2 * alpha2, self.V * norm(U, axis=1)**2))
         return None
+
+    def calc_rot_energy(self, time, overwrite=False):
+        return None
+
+    def cleanup():
+        return None
+
+    def measureAll(self, time, overwrite=False, cleanup=False):
+        self.calc_vorticity(time, overwrite=overwrite)
+        self.calc_enstrophy(time, overwrite=overwrite)
+        self.calc_Q(time, overwrite=overwrite)
+        self.calc_R(time, overwrite=overwrite)
+        self.calc_droplet_volumes(time, overwrite=overwrite)
+        self.calc_Xcm(time, overwrite=overwrite)
+        self.calc_Ucm(time, overwrite=overwrite)
+        self.calc_impact_parameter(time, overwrite=overwrite)
+        self.calc_Reynolds(time, overwrite=overwrite)
+        self.calc_Weber(time, overwrite=overwrite)
+        self.calc_dSigma(time, overwrite=overwrite)
+        self.calc_contact_area(time, overwrite=overwrite)
+        self.calc_volume_mixture(time, overwrite=overwrite)
+        self.calc_dissipation_rate(time, overwrite=overwrite)
+        self.calc_classification(time, overwrite=overwrite)
+        self.calc_visc_dissipation_density(time, overwrite=overwrite)
+        self.calc_visc_dissipation(time, overwrite=overwrite)
+        self.calc_eigensystem(time, overwrite=overwrite)
+        self.calc_eigprojection(time, overwrite=overwrite)
+        self.calc_topology_contact_surface(time, overwrite=overwrite)
+        self.calc_topology_diffusive(time, overwrite=overwrite)
+        self.calc_topology_mixture_volume(time, overwrite=overwrite)
+        self.calc_vortprojection(time, overwrite=overwrite)
+        self.calc_surface_energy(time, overwrite=overwrite)
+        self.calc_kinetic_energy(time, overwrite=overwrite)
+        self.calc_rot_energy(time, overwrite=overwrite)
+        self.cleanup()
+        return None
+
+
 
