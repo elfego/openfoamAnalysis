@@ -1,4 +1,4 @@
-from numpy import sum, dot, save, nditer, zeros_like, hstack, array, trace
+from numpy import sum, dot, save, nditer, zeros_like, hstack, array, trace, cross
 from numpy.linalg import det, eigh, norm
 import numba_scipy
 from numba import jit, prange, float64
@@ -18,6 +18,7 @@ def calc_2nd_inv(A_flat):
 @jit(nopython=True, cache=True, fastmath=True, nogil=True)
 def calc_3rd_inv(A_flat):
     return -det(A_flat.reshape((3, 3)))
+
 
 
 def calc_val_weighted(X, dV, normalised=False, fsave=None):
@@ -73,3 +74,13 @@ def local_eigensystem(gradU):
                    normalise(v[:, idx[1]]),
                    normalise(v[:, idx[2]]),
                    w[idx]))
+
+
+def get_angular_momentum(M, R, U, out=None):
+    with nditer([M, R, U, out],
+                flags=['external_loop'] * 3 + ['buffered'],
+                op_flags=[['readonly']] * 3 + [['writeonly', 'allocate']]) as it:
+        for dm, r, u, y in it:
+            y[...] = dm * cross(r, u)
+        return it.operands[3].T
+    return None

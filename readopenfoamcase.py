@@ -3,11 +3,12 @@ from os import makedirs
 from re import findall
 from numpy import (arange, array, r_, sum, save, savez_compressed,
                    load, sqrt, dot, zeros, zeros_like, ones_like,
-                   vstack)
+                   vstack, cross)
 from numpy.linalg import norm
 from openfoamparser import parse_internal_field
 from misctools import (calc_val_weighted, calc_2nd_inv, calc_3rd_inv,
-                       dSigma, local_eigensystem, get_vorticity)
+                       dSigma, local_eigensystem, get_vorticity,
+                       get_angular_momentum)
 
 
 class readOFcase:
@@ -36,7 +37,7 @@ class readOFcase:
 
     def load_mesh(self):
         self.mesh_loaded = True
-        self.C = self.load_field('C', '0.orig')
+        self.R = self.load_field('R', '0.orig')
         self.V = self.load_field('V', '0.orig')
 
     def load_field(self, field_name, path):
@@ -182,10 +183,10 @@ class readOFcase:
         dv1 = alpha1 * self.V
         dv2 = alpha2 * self.V
 
-        calc_val_weighted(self.C, dv1,
+        calc_val_weighted(self.R, dv1,
                           normalised=True,
                           fsave=join(o_dir, 'X.pregel.npy'))
-        calc_val_weighted(self.C, dv2,
+        calc_val_weighted(self.R, dv2,
                           normalised=True,
                           fsave=join(o_dir, 'X.crosslinker.npy'))
 
@@ -458,6 +459,7 @@ class readOFcase:
         makedirs(o_dir, exist_ok=True)
 
         if (exists(join(o_dir, 'eigenvector_1.npy')) and
+            exists(join(o_dir, 'eigenvector_2.npy')) and
             exists(join(o_dir, 'eigenvector_3.npy')) and
             exists(join(o_dir, 'eigenvalues.npy')) and
             not overwrite):
@@ -470,6 +472,7 @@ class readOFcase:
             W[i] = local_eigensystem(gradU[i])
 
         save(join(o_dir, 'eigenvector_1.npy'), W[:,  0:3])
+        save(join(o_dir, 'eigenvector_2.npy'), W[:,  3:6])
         save(join(o_dir, 'eigenvector_3.npy'), W[:,  6:9])
         save(join(o_dir,   'eigenvalues.npy'), W[:, 9:12])
         return None
@@ -479,22 +482,26 @@ class readOFcase:
         makedirs(o_dir, exist_ok=True)
 
         if (exists(join(o_dir, 'eigvec_1_projection.npy')) and
+            exists(join(o_dir, 'eigvec_2_projection.npy')) and
             exists(join(o_dir, 'eigvec_3_projection.npy')) and
             not overwrite):
             return None
 
         dS = self.load_post_field('dSigma.npy', time)
         E1 = self.load_post_field('eigenvector_1.npy', time)
+        E2 = self.load_post_field('eigenvector_2.npy', time)
         E3 = self.load_post_field('eigenvector_3.npy', time)
 
         S = sum(norm(dS, axis=1))
         save(join(o_dir, 'contact_surface_area.npy'), S)
         pE1 = sum(abs(sum(E1 * dS, axis=1)))
+        pE2 = sum(abs(sum(E2 * dS, axis=1)))
         pE3 = sum(abs(sum(E3 * dS, axis=1)))
 
         save(join(o_dir, 'eigvec_1_projection.npy'), pE1)
+        save(join(o_dir, 'eigvec_2_projection.npy'), pE2)
         save(join(o_dir, 'eigvec_3_projection.npy'), pE3)
-        return pE1, pE3
+        return pE1, pE2, pE3
 
     def calc_topology_contact_surface(self, time, overwrite=False):
         o_dir = join(self.out_dir, time)
@@ -503,11 +510,11 @@ class readOFcase:
         if exists(join(o_dir, 'surface_area_topology.npy')) and not overwrite:
             return None
 
-        C = self.load_post_field('classification.npz', time)['arr_0']
+        TC = self.load_post_field('classification.npz', time)['arr_0']
         dS = norm(self.load_post_field('dSigma.npy', time), axis=1)
 
         save(join(o_dir, 'surface_area_topology.npy'),
-             array([dot(C == i, dS) for i in range(4)]))
+             array([dot(TC == i, dS) for i in range(4)]))
         return None
 
     def calc_topology_diffusive(self, time, overwrite=False):
@@ -517,11 +524,11 @@ class readOFcase:
         if exists(join(o_dir, 'diffusive_topology.npy')) and not overwrite:
             return None
 
-        C = self.load_post_field('classification.npz', time)['arr_0']
+        TC = self.load_post_field('classification.npz', time)['arr_0']
         dV = self.load_post_field('scalarDissipationRate.npy', time)
 
         save(join(o_dir, 'diffusive_topology.npy'),
-             array([dot(C == i, dV) for i in range(4)]))
+             array([dot(TC == i, dV) for i in range(4)]))
         return None
 
     def calc_topology_mixture_volume(self, time, overwrite=False):
@@ -531,11 +538,11 @@ class readOFcase:
         if exists(join(o_dir, 'mixing_topology.npy')) and not overwrite:
             return None
 
-        C = self.load_post_field('classification.npz', time)['arr_0']
+        TC = self.load_post_field('classification.npz', time)['arr_0']
         dV = self.load_post_field('mixtureVolume.npy', time)
 
         save(join(o_dir, 'mixing_topology.npy'),
-             array([dot(C == i, dV) for i in range(4)]))
+             array([dot(TC == i, dV) for i in range(4)]))
         return None
 
     def calc_vortprojection(self, time, overwrite=False):
@@ -565,7 +572,7 @@ class readOFcase:
 
         if not self.mesh_loaded:
             self.load_mesh()
-        w = self.C[:, 3] >= 0.0002 * ones_like(self.C[:, 3])
+        w = self.R[:, 3] >= 0.0002 * ones_like(self.R[:, 3])
 
         save(join(o_dir, 'surface_energy.npy'),
              self.surface_tension * dot(self.V * w, norm(gradAlpha1 + gradAlpha2, axis=1)))
@@ -594,10 +601,33 @@ class readOFcase:
              0.5 * dot(rho1 * alpha1 + rho2 * alpha2, self.V * norm(U, axis=1)**2))
         return None
 
-    def calc_rot_energy(self, time, overwrite=False):
+    def calc_angular_momentum(self, time, overwrite=False):
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        if exists(join(o_dir, 'angular_momentum.npy')) and not overwrite:
+            return None
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+
+        U = self.load_field('U', t_dir)
+
+        rho1 = self.transport_properties['pregel']['density']
+        alpha1 = self.load_field('alpha.pregel', t_dir)
+
+        rho2 = self.transport_properties['crosslinker']['density']
+        alpha2 = self.load_field('alpha.crosslinker', t_dir)
+
+        M = (rho1 * alpha1 + rho2 * alpha2) * self.V
+
+        save(join(o_dir, 'angular_momentum.npy'),
+             sum(get_angular_momentum(M, self.R, U), axis=1))
         return None
 
     def cleanup():
+
         return None
 
     def measureAll(self, time, overwrite=False, cleanup=False):
@@ -626,7 +656,7 @@ class readOFcase:
         self.calc_vortprojection(time, overwrite=overwrite)
         self.calc_surface_energy(time, overwrite=overwrite)
         self.calc_kinetic_energy(time, overwrite=overwrite)
-        self.calc_rot_energy(time, overwrite=overwrite)
+        self.calc_angular_momentum(time, overwrite=overwrite)
         self.cleanup()
         return None
 
