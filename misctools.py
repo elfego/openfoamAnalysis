@@ -76,11 +76,10 @@ def local_eigensystem(gradU):
                    w[idx]))
 
 
-def get_angular_momentum(M, R, U, out=None):
-    with nditer([M, R, U, out],
-                flags=['external_loop'] * 3 + ['buffered'],
-                op_flags=[['readonly']] * 3 + [['writeonly', 'allocate']]) as it:
-        for dm, r, u, y in it:
-            y[...] = dm * cross(r, u)
-        return it.operands[3].T
-    return None
+def prod(a, V, out=None):
+    with nditer([a, V.T, out],
+                flags=['external_loop'] * 2 + ['buffered'],
+                op_flags=[['readonly']] * 2 + [['writeonly', 'allocate']]) as it:
+        for aa, vv, y in it:
+            y[...] = aa * vv
+        return it.operands[2].T
