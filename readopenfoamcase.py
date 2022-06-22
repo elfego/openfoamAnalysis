@@ -791,6 +791,7 @@ class readOFcase:
             'eigenvector_2.npy',
             'eigenvector_3.npy',
             'visc_dissipation_density.npy',
+            'classification.npz',
             'scalar_dissipation_density.npy'
         ]
         for fl in file_list:
@@ -803,6 +804,7 @@ class readOFcase:
 
     def measureAll(self, time, overwrite=False, cleanup=False):
         print('Time: ', time)
+
         self.calc_droplet_volumes(time, overwrite=overwrite)
         self.calc_Xcm(time, overwrite=overwrite)
         self.calc_Ucm(time, overwrite=overwrite)
@@ -833,8 +835,11 @@ class readOFcase:
         self.calc_angular_momentum(time, overwrite=overwrite)
         self.calc_QR_histograms(time, overwrite=overwrite)
         self.calc_enstrophy_histogram(time, overwrite=overwrite)
+
         if cleanup:
             self.cleanup(time)
+
+        print('Done', time)
         return None
 
 
