@@ -8,7 +8,7 @@ from numpy.linalg import norm
 from openfoamparser import parse_internal_field
 from misctools import (calc_val_weighted, calc_2nd_inv, calc_3rd_inv,
                        dSigma, local_eigensystem, get_vorticity, prod)
-
+from time import time
 
 class readOFcase:
     def __init__(self, case_dir=None):
@@ -734,10 +734,10 @@ class readOFcase:
         idx_liq = alpha > ones_like(alpha) * (1.0 - tol)
 
         P_gas, X, Y = histogram2d(R[idx_gas], Q[idx_gas], weights=self.V[idx_gas],
-                                     bins=bins, range=extent)
+                                  bins=bins, range=extent)
 
         P_liq, X, Y = histogram2d(R[idx_liq], Q[idx_liq], weights=self.V[idx_liq],
-                                     bins=bins, range=extent)
+                                  bins=bins, range=extent)
 
         save(join(o_dir, 'QR_hist_bins.npy'), [X, Y])
         save(join(o_dir, 'QR_histogram_g.npy'), P_gas)
@@ -776,7 +776,7 @@ class readOFcase:
              vstack((sbins, pdf_gas / db, pdf_liq / db)))
         return None
 
-    def cleanup(self, time):
+    def clean(self, time):
         print('\tCleaning up...')
         o_dir = join(self.out_dir, time)
 
@@ -802,42 +802,119 @@ class readOFcase:
                 print(f'\t\t{fl} missing')
         return None
 
-    def measureAll(self, time, overwrite=False, cleanup=False):
+    def check_done(self, time):
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+        return exists(join(o_dir, 'end.lck'))
+
+    def measureAll(self, time, overwrite=False, clean=False):
         print('Time: ', time)
+        o_dir = join(self.out_dir, time)
 
-        self.calc_droplet_volumes(time, overwrite=overwrite)
-        self.calc_Xcm(time, overwrite=overwrite)
-        self.calc_Ucm(time, overwrite=overwrite)
-        self.calc_impact_parameter(time, overwrite=overwrite)
-        self.calc_Reynolds(time, overwrite=overwrite)
-        self.calc_Weber(time, overwrite=overwrite)
-        self.calc_dSigma(time, overwrite=overwrite)
-        self.calc_vorticity(time, overwrite=overwrite)
-        self.calc_enstrophy(time, overwrite=overwrite)
-        self.calc_Q(time, overwrite=overwrite)
-        self.calc_R(time, overwrite=overwrite)
-        self.calc_contact_area(time, overwrite=overwrite)
-        self.calc_volume_mixture(time, overwrite=overwrite)
-        self.calc_dissipation_density(time, overwrite=overwrite)
-        self.calc_dissipation_rate(time, overwrite=overwrite)
-        self.calc_classification(time, overwrite=overwrite)
-        self.calc_visc_dissipation_density(time, overwrite=overwrite)
-        self.calc_visc_dissipation(time, overwrite=overwrite)
-        self.calc_eigensystem(time, overwrite=overwrite)
-        self.calc_eigprojection(time, overwrite=overwrite)
-        self.calc_topology_contact_surface(time, overwrite=overwrite)
-        self.calc_topology_diffusive(time, overwrite=overwrite)
-        self.calc_topology_mixture_volume(time, overwrite=overwrite)
-        self.calc_topology_viscous(time, overwrite=overwrite)
-        self.calc_vortprojection(time, overwrite=overwrite)
-        self.calc_surface_energy(time, overwrite=overwrite)
-        self.calc_kinetic_energy(time, overwrite=overwrite)
-        self.calc_angular_momentum(time, overwrite=overwrite)
-        self.calc_QR_histograms(time, overwrite=overwrite)
-        self.calc_enstrophy_histogram(time, overwrite=overwrite)
+        if not self.check_done(time) and not overwrite:
+            clock_times = []
+            run_funcs = []
 
-        if cleanup:
-            self.cleanup(time)
+            clock_times.append(time())
+            self.calc_droplet_volumes(time, overwrite=overwrite)
+            run_funcs.append('calc_droplet_volumes')
+            clock_times.append(time())
+            self.calc_Xcm(time, overwrite=overwrite)
+            run_funcs.append('calc_Xcm')
+            clock_times.append(time())
+            self.calc_Ucm(time, overwrite=overwrite)
+            run_funcs.append('calc_Ucm')
+            clock_times.append(time())
+            self.calc_impact_parameter(time, overwrite=overwrite)
+            run_funcs.append('calc_impact_parameter')
+            clock_times.append(time())
+            self.calc_Reynolds(time, overwrite=overwrite)
+            run_funcs.append('calc_Reynolds')
+            clock_times.append(time())
+            self.calc_Weber(time, overwrite=overwrite)
+            run_funcs.append('calc_Weber')
+            clock_times.append(time())
+            self.calc_dSigma(time, overwrite=overwrite)
+            run_funcs.append('calc_dSigma')
+            clock_times.append(time())
+            self.calc_vorticity(time, overwrite=overwrite)
+            run_funcs.append('calc_vorticity')
+            clock_times.append(time())
+            self.calc_enstrophy(time, overwrite=overwrite)
+            run_funcs.append('calc_enstrophy')
+            clock_times.append(time())
+            self.calc_Q(time, overwrite=overwrite)
+            run_funcs.append('calc_Q')
+            clock_times.append(time())
+            self.calc_R(time, overwrite=overwrite)
+            run_funcs.append('calc_R')
+            clock_times.append(time())
+            self.calc_contact_area(time, overwrite=overwrite)
+            run_funcs.append('calc_contact_area')
+            clock_times.append(time())
+            self.calc_volume_mixture(time, overwrite=overwrite)
+            run_funcs.append('calc_volume_mixture')
+            clock_times.append(time())
+            self.calc_dissipation_density(time, overwrite=overwrite)
+            run_funcs.append('calc_dissipation_density')
+            clock_times.append(time())
+            self.calc_dissipation_rate(time, overwrite=overwrite)
+            run_funcs.append('calc_dissipation_rate')
+            clock_times.append(time())
+            self.calc_classification(time, overwrite=overwrite)
+            run_funcs.append('calc_classification')
+            clock_times.append(time())
+            self.calc_visc_dissipation_density(time, overwrite=overwrite)
+            run_funcs.append('calc_visc_dissipation_density')
+            clock_times.append(time())
+            self.calc_visc_dissipation(time, overwrite=overwrite)
+            run_funcs.append('calc_visc_dissipation')
+            clock_times.append(time())
+            self.calc_eigensystem(time, overwrite=overwrite)
+            run_funcs.append('calc_eigensystem')
+            clock_times.append(time())
+            self.calc_eigprojection(time, overwrite=overwrite)
+            run_funcs.append('calc_eigprojection')
+            clock_times.append(time())
+            self.calc_topology_contact_surface(time, overwrite=overwrite)
+            run_funcs.append('calc_topology_contact_surface')
+            clock_times.append(time())
+            self.calc_topology_diffusive(time, overwrite=overwrite)
+            run_funcs.append('calc_topology_diffusive')
+            clock_times.append(time())
+            self.calc_topology_mixture_volume(time, overwrite=overwrite)
+            run_funcs.append('calc_topology_mixture_volume')
+            clock_times.append(time())
+            self.calc_topology_viscous(time, overwrite=overwrite)
+            run_funcs.append('calc_topology_viscous')
+            clock_times.append(time())
+            self.calc_vortprojection(time, overwrite=overwrite)
+            run_funcs.append('calc_vortprojection')
+            clock_times.append(time())
+            self.calc_surface_energy(time, overwrite=overwrite)
+            run_funcs.append('calc_surface_energy')
+            clock_times.append(time())
+            self.calc_kinetic_energy(time, overwrite=overwrite)
+            run_funcs.append('calc_kinetic_energy')
+            clock_times.append(time())
+            self.calc_angular_momentum(time, overwrite=overwrite)
+            run_funcs.append('calc_angular_momentum')
+            clock_times.append(time())
+            self.calc_QR_histograms(time, overwrite=overwrite)
+            run_funcs.append('calc_QR_histograms')
+            clock_times.append(time())
+            self.calc_enstrophy_histogram(time, overwrite=overwrite)
+            run_funcs.append('calc_enstrophy_histogram')
+            clock_times.append(time())
+
+            with open(join(o_dir, 'end.lck'), '') as ofile:
+                ofile.write(f'Starting at: {clock_times[0]}\n\n')
+                for i in range(len(run_funcs)):
+                    ofile.write(f'{run_funcs[i]:s}: {clock_times[i + 1] - clock_times[i]}\n')
+                ofile.write(f'Ended at: {clock_times[-1]}\n')
+
+        if clean:
+            self.clean(time)
 
         print('Done', time)
         return None
