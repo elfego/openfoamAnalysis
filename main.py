@@ -15,8 +15,8 @@ def main():
             interval = list(map(int, sys.argv[i + 1].split(':')))
         if '--time' == sys.argv[i] and len(sys.argv) >= i + 1:
             time = sys.argv[i + 1]
-        if '--cleanup' == sys.argv[i]:
-            cleanup = True
+        if '--clean' == sys.argv[i]:
+            clean = True
 
     rc = readOFcase(case)
     rc.set_nozzle_radius(2.5e-4)
