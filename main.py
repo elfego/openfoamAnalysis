@@ -9,6 +9,7 @@ def main():
     interval = None
     time = None
     clean = False
+    ow = False
 
     for i in range(2, len(sys.argv)):
         if '--range' == sys.argv[i] and len(sys.argv) >= i + 1:
@@ -17,14 +18,16 @@ def main():
             time = sys.argv[i + 1]
         if '--clean' == sys.argv[i]:
             clean = True
+        if '--overwrite' == sys.argv[i]:
+            ow = True
 
     rc = readOFcase(case)
     rc.set_nozzle_radius(2.5e-4)
 
     if time is None:
-        rc.forAllTimes(rc.measureAll, interval=interval, clean=clean)
+        rc.forAllTimes(rc.measureAll, interval=interval, clean=clean, overwrite=ow)
     else:
-        rc.measureAll(time, overwrite=True, clean=clean)
+        rc.measureAll(time, overwrite=ow, clean=clean)
 
     # rc.forAllTimes(rc.calc_vorticity, interval=interval)
     # rc.forAllTimes(rc.calc_enstrophy, interval=interval)
