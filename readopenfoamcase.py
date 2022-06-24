@@ -1,6 +1,7 @@
 from os.path import join, exists
 from os import makedirs, remove
 from re import findall
+from sys import stderr
 from numpy import (arange, array, r_, sum, save, savez_compressed,
                    load, sqrt, dot, zeros, zeros_like, ones_like,
                    vstack, cross, histogram, histogram2d, logspace)
@@ -146,8 +147,9 @@ class readOFcase:
             try:
                 func(t, *args, **kwargs)
             except Exception as error:
-                print("Something went wrong at time:", t)
-                print(error)
+                print("Case: ", self.case_dir, file=stderr)
+                print("   Something went wrong at time:", t, file=stderr)
+                print(error, file=stderr)
 
     def calc_droplet_volumes(self, time, overwrite=False):
         print('\tCalculating droplet volumes V1 and V2...')
