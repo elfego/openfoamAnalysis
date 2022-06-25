@@ -49,11 +49,25 @@ preDatabase = {
     'topology surf area 1': [],
     'topology surf area 2': [],
     'topology surf area 3': [],
-    'most expansive proj': [],
-    'most compressive proj': [],
+    'topology diffusive 0': [],
+    'topology diffusive 1': [],
+    'topology diffusive 2': [],
+    'topology diffusive 3': [],
+    'topology mix vol 0': [],
+    'topology mix vol 1': [],
+    'topology mix vol 2': [],
+    'topology mix vol 3': [],
+    'topology viscous 0': [],
+    'topology viscous 1': [],
+    'topology viscous 2': [],
+    'topology viscous 3': [],
+    'eigvec 1 proj': [],
+    'eigvec 2 proj': [],
+    'eigvec 3 proj': [],
     'vort proj': [],
     'surface energy': [],
-    'kinetic energy': []
+    'kinetic energy': [],
+    'angular momentum': []
 }
 
 print("Iterating over the results.")
@@ -97,23 +111,35 @@ for time in times:
     preDatabase['mixture volume'].append(Vm / (V1 + V2))
     preDatabase['mixing intensity'].append(1 - np.sqrt(1 - Vm / (V1 + V2)))
 
-    tmp = np.load(join(read_dir, 'scalarDissipationRate.npy'))
-    preDatabase['scalar dissipation rate'].append(tmp)
+    eps_D = np.load(join(read_dir, 'scalar_dissipation_rate.npy'))
+    preDatabase['scalar dissipation rate'].append(eps_D)
 
-    tmp = np.load(join(read_dir, 'visc_dissipation.npy'))
-    preDatabase['visc dissipation'].append(tmp)
+    eps_mu = np.load(join(read_dir, 'visc_dissipation.npy'))
+    preDatabase['visc dissipation'].append(eps_mu)
 
-    tmp = np.load(join(read_dir, 'surface_area_topology.npy'))
-    preDatabase['topology surf area 0'].append(tmp[0] / Sc)
-    preDatabase['topology surf area 1'].append(tmp[1] / Sc)
-    preDatabase['topology surf area 2'].append(tmp[2] / Sc)
-    preDatabase['topology surf area 3'].append(tmp[3] / Sc)
+    tmp = np.load(join(read_dir, 'topology_surface_area.npy'))
+    for i in range(4):
+        k = f'topology surf area {i:d}'
+        preDatabase[k].append(tmp[i] / Sc)
 
-    tmp = np.load(join(read_dir, 'eigvec_1_projection.npy'))
-    preDatabase['most expansive proj'].append(tmp / Sc)
+    tmp = np.load(join(read_dir, 'topology_diffusive.npy'))
+    for i in range(4):
+        k = f'topology diffusive {i:d}'
+        preDatabase[k].append(tmp[i] / eps_D)
 
-    tmp = np.load(join(read_dir, 'eigvec_3_projection.npy'))
-    preDatabase['most compressive proj'].append(tmp / Sc)
+    tmp = np.load(join(read_dir, 'topology_mixing.npy'))
+    for i in range(4):
+        k = f'topology mix vol {i:d}'
+        preDatabase[k].append(tmp[i] / Vm)
+
+    tmp = np.load(join(read_dir, 'topology_viscous.npy'))
+    for i in range(4):
+        k = f'topology viscous {i:d}'
+        preDatabase[k].append(tmp[i] / eps_mu)
+
+    for i in range(1, 4):
+        tmp = np.load(join(read_dir, f'eigvec_{i:d}_projection.npy'))
+        preDatabase[f'eigvec {i:d} proj'].append(tmp / Sc)
 
     tmp = np.load(join(read_dir, 'w_dot_n.npy'))
     preDatabase['vort proj'].append(tmp / Sc)
@@ -123,6 +149,9 @@ for time in times:
 
     tmp = np.load(join(read_dir, 'kinetic_energy.npy'))
     preDatabase['kinetic energy'].append(tmp)
+
+    tmp = np.load(join(read_dir, 'angular_momentum.npy'))
+    preDatabase['angular momentum'].append(np.linalg.norm(tmp))
 
 print("Done extracting the values. Building database.")
 df = pd.DataFrame(preDatabase)

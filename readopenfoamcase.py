@@ -766,6 +766,10 @@ class readOFcase:
         sbins = sqrt(bins_[:-1] * bins_[1:])
         db = bins_[1:] - bins_[:-1]
 
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+
         alpha = self.load_field('alpha.pregel', t_dir) \
             + self.load_field('alpha.crosslinker', t_dir)
         xi = self.load_post_field('enstrophy.npy', time)
