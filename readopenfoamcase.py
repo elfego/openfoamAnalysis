@@ -571,7 +571,7 @@ class readOFcase:
         dV = self.load_post_field('scalar_dissipation_density.npy', time)
 
         save(join(o_dir, 'topology_diffusive.npy'),
-             array([dot(TC == i, dV) for i in range(4)]))
+             self.diffusivity * array([dot(TC == i, dV) for i in range(4)]))
         return None
 
     def calc_topology_mixture_volume(self, time, overwrite=False):
