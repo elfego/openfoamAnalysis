@@ -1,5 +1,7 @@
 from cubicEqn import cubicEqnRoots, evalCubicPolynomial
 import linalg
+import eig
+import eigh
 import numpy as np
 from numba import jit
 
@@ -30,9 +32,7 @@ def local_eigensystem(gradU):
                       w[idx]))
 
 
-
 # if __name__ == '__main__':
-
 A = 8 * np.random.rand(3, 3) - 4
 print(np.trace(A) == linalg.tr(A.flatten()))
 A -= np.trace(A) / 3
@@ -66,8 +66,8 @@ print(linalg.Rinvh(Cs))
 
 
 w1 = np.sort(np.linalg.eigvalsh(As))[::-1]
-w2 = linalg.eigvals(Bs)
-w3 = linalg.eigvalsh(Cs)
+w2 = eig.eigvals(Bs)
+w3 = eigh.eigvalsh(Cs)
 print("eigenvalues")
 print(w1)
 print(w2)
@@ -75,38 +75,25 @@ print(w3)
 
 print("eigenvectors")
 W1 = local_eigensystem(As)
-W2 = np.array(linalg.eigvech(Bs))
+W2 = np.array(eig.eigvecs(Bs))
+W3 = np.array(eigh.eigvecsh(Cs))
 print(W1)
 print(W2)
+print(W3)
+
 print("checking...")
 for i in range(3):
-    print("  eigenvalue", W1[9 + i], W2[9 + i])
+    print("  eigenvalue", W1[9 + i], W3[9 + i])
     print("  eigenequation")
     print("  ", np.dot(As, W1[3*i:3*(i + 1)]), W1[9 + i] * W1[3*i:3*(i + 1)])
     print("  ", np.dot(As, W2[3*i:3*(i + 1)]), W2[9 + i] * W2[3*i:3*(i + 1)])
+    print("  ", np.dot(As, W3[3*i:3*(i + 1)]), W3[9 + i] * W3[3*i:3*(i + 1)])
 
 
 print("Error")
 for i in range(3):
-    cc = compare_vecs(W1[3*i: 3*(i + 1)], W2[3*i: 3*(i + 1)])
-    print("  ", cc)
+    err2 = compare_vecs(W1[3*i: 3*(i + 1)], W3[3*i: 3*(i + 1)])
+    err3 = compare_vecs(W1[3*i: 3*(i + 1)], W3[3*i: 3*(i + 1)])
+    print("  ", err2, err3)
 
 
-# ev1 = linalg.eigvec(Bs, float(w1[0]))
-# print(ev1)
-
-
-# print(linalg.det(A.flatten()) == np.linalg.det(A))
-
-# coeffs = (1.0, p, q, r)
-
-# # a = 1.0
-# # b = 0.0
-# # c = -4.2
-# # d = 2.0
-# # coeffs = (a, b, c, d)
-
-# roots = cubicEqnRoots(*coeffs)
-
-# for x_ in roots:
-#     print(f"Root x = {x_} gives f(x) = {evalCubicPolynomial(x_, *coeffs)}")
