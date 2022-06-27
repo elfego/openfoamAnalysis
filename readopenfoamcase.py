@@ -9,8 +9,8 @@ from numpy.linalg import norm
 from openfoamparser import parse_internal_field
 from misctools import (calc_val_weighted, calc_2nd_inv, calc_3rd_inv,
                        dSigma, local_eigensystem, get_vorticity, prod)
-from src.linalg import asymmVec, magSq, Qinv, Rinv, symmTraceless
-from src.eigh import eigvecsh
+from linalg import asymmVec, magSq, Qinv, Rinv, symmTraceless
+from eigh import eigvecsh
 import time as tm
 
 
@@ -312,8 +312,10 @@ class readOFcase:
 
         A = self.load_field('grad(U)', t_dir)
 
-        omega = vstack(list(map(asymmVec, A)))
-        save(join(o_dir, 'vorticity.npy'))
+        N = len(A)
+
+        omega = array(list(map(asymmVec, A)))
+        save(join(o_dir, 'vorticity.npy'), omega)
         print('\t\tsaving vorticity.npy')
 
         xi = array(list(map(magSq, omega)))
@@ -336,11 +338,9 @@ class readOFcase:
         del xi
         del Q
 
-        N = len(A)
         W = zeros((N, 12))
         for i in range(N):
             W[i] = eigvecsh(symmTraceless(A[i]))
-
         save(join(o_dir, 'eigenvector_1.npy'), W[:,  0:3])
         save(join(o_dir, 'eigenvector_2.npy'), W[:,  3:6])
         save(join(o_dir, 'eigenvector_3.npy'), W[:,  6:9])

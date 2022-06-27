@@ -1910,6 +1910,7 @@ static const char __pyx_k_array[] = "array";
 static const char __pyx_k_class[] = "__class__";
 static const char __pyx_k_error[] = "error";
 static const char __pyx_k_flags[] = "flags";
+static const char __pyx_k_magSq[] = "magSq";
 static const char __pyx_k_numpy[] = "numpy";
 static const char __pyx_k_range[] = "range";
 static const char __pyx_k_shape[] = "shape";
@@ -2036,6 +2037,7 @@ static PyObject *__pyx_kp_s_itemsize_0_for_cython_array;
 static PyObject *__pyx_n_s_linalg;
 static PyObject *__pyx_kp_s_linalg_pyx;
 static PyObject *__pyx_n_s_mag;
+static PyObject *__pyx_n_s_magSq;
 static PyObject *__pyx_n_s_main;
 static PyObject *__pyx_n_s_memview;
 static PyObject *__pyx_n_s_mode;
@@ -2085,7 +2087,7 @@ static PyObject *__pyx_pf_6linalg_2det(CYTHON_UNUSED PyObject *__pyx_self, __Pyx
 static PyObject *__pyx_pf_6linalg_4Qinv(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_A); /* proto */
 static PyObject *__pyx_pf_6linalg_6Rinv(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_A); /* proto */
 static PyObject *__pyx_pf_6linalg_8mag(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_v); /* proto */
-static PyObject *__pyx_pf_6linalg_10mag(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_v); /* proto */
+static PyObject *__pyx_pf_6linalg_10magSq(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_v); /* proto */
 static PyObject *__pyx_pf_6linalg_12symmTraceless(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_A); /* proto */
 static PyObject *__pyx_pf_6linalg_14asymmVec(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_A); /* proto */
 static PyObject *__pyx_pf_6linalg_16Qinvh(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_A); /* proto */
@@ -3163,50 +3165,50 @@ static double __pyx_f_6linalg__magSq(__Pyx_memviewslice __pyx_v_U) {
 /* "linalg.pyx":92
  * 
  * 
- * def mag(double[:] v):             # <<<<<<<<<<<<<<
+ * def magSq(double[:] v):             # <<<<<<<<<<<<<<
  *     return _magSq(v)
  * 
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_6linalg_11mag(PyObject *__pyx_self, PyObject *__pyx_arg_v); /*proto*/
-static PyMethodDef __pyx_mdef_6linalg_11mag = {"mag", (PyCFunction)__pyx_pw_6linalg_11mag, METH_O, 0};
-static PyObject *__pyx_pw_6linalg_11mag(PyObject *__pyx_self, PyObject *__pyx_arg_v) {
+static PyObject *__pyx_pw_6linalg_11magSq(PyObject *__pyx_self, PyObject *__pyx_arg_v); /*proto*/
+static PyMethodDef __pyx_mdef_6linalg_11magSq = {"magSq", (PyCFunction)__pyx_pw_6linalg_11magSq, METH_O, 0};
+static PyObject *__pyx_pw_6linalg_11magSq(PyObject *__pyx_self, PyObject *__pyx_arg_v) {
   __Pyx_memviewslice __pyx_v_v = { 0, 0, { 0 }, { 0 }, { 0 } };
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
-  __Pyx_RefNannySetupContext("mag (wrapper)", 0);
+  __Pyx_RefNannySetupContext("magSq (wrapper)", 0);
   assert(__pyx_arg_v); {
     __pyx_v_v = __Pyx_PyObject_to_MemoryviewSlice_ds_double(__pyx_arg_v, PyBUF_WRITABLE); if (unlikely(!__pyx_v_v.memview)) __PYX_ERR(0, 92, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
-  __Pyx_AddTraceback("linalg.mag", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("linalg.magSq", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_6linalg_10mag(__pyx_self, __pyx_v_v);
+  __pyx_r = __pyx_pf_6linalg_10magSq(__pyx_self, __pyx_v_v);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_6linalg_10mag(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_v) {
+static PyObject *__pyx_pf_6linalg_10magSq(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_v) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("mag", 0);
+  __Pyx_RefNannySetupContext("magSq", 0);
 
   /* "linalg.pyx":93
  * 
- * def mag(double[:] v):
+ * def magSq(double[:] v):
  *     return _magSq(v)             # <<<<<<<<<<<<<<
  * 
  * 
@@ -3221,7 +3223,7 @@ static PyObject *__pyx_pf_6linalg_10mag(CYTHON_UNUSED PyObject *__pyx_self, __Py
   /* "linalg.pyx":92
  * 
  * 
- * def mag(double[:] v):             # <<<<<<<<<<<<<<
+ * def magSq(double[:] v):             # <<<<<<<<<<<<<<
  *     return _magSq(v)
  * 
  */
@@ -3229,7 +3231,7 @@ static PyObject *__pyx_pf_6linalg_10mag(CYTHON_UNUSED PyObject *__pyx_self, __Py
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("linalg.mag", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("linalg.magSq", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __PYX_XDEC_MEMVIEW(&__pyx_v_v, 1);
@@ -18207,6 +18209,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_linalg, __pyx_k_linalg, sizeof(__pyx_k_linalg), 0, 0, 1, 1},
   {&__pyx_kp_s_linalg_pyx, __pyx_k_linalg_pyx, sizeof(__pyx_k_linalg_pyx), 0, 0, 1, 0},
   {&__pyx_n_s_mag, __pyx_k_mag, sizeof(__pyx_k_mag), 0, 0, 1, 1},
+  {&__pyx_n_s_magSq, __pyx_k_magSq, sizeof(__pyx_k_magSq), 0, 0, 1, 1},
   {&__pyx_n_s_main, __pyx_k_main, sizeof(__pyx_k_main), 0, 0, 1, 1},
   {&__pyx_n_s_memview, __pyx_k_memview, sizeof(__pyx_k_memview), 0, 0, 1, 1},
   {&__pyx_n_s_mode, __pyx_k_mode, sizeof(__pyx_k_mode), 0, 0, 1, 1},
@@ -18526,14 +18529,14 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   /* "linalg.pyx":92
  * 
  * 
- * def mag(double[:] v):             # <<<<<<<<<<<<<<
+ * def magSq(double[:] v):             # <<<<<<<<<<<<<<
  *     return _magSq(v)
  * 
  */
   __pyx_tuple__29 = PyTuple_Pack(2, __pyx_n_s_v, __pyx_n_s_v); if (unlikely(!__pyx_tuple__29)) __PYX_ERR(0, 92, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__29);
   __Pyx_GIVEREF(__pyx_tuple__29);
-  __pyx_codeobj__30 = (PyObject*)__Pyx_PyCode_New(1, 0, 2, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__29, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_linalg_pyx, __pyx_n_s_mag, 92, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__30)) __PYX_ERR(0, 92, __pyx_L1_error)
+  __pyx_codeobj__30 = (PyObject*)__Pyx_PyCode_New(1, 0, 2, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__29, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_linalg_pyx, __pyx_n_s_magSq, 92, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__30)) __PYX_ERR(0, 92, __pyx_L1_error)
 
   /* "linalg.pyx":107
  * @cython.boundscheck(False)
@@ -19106,13 +19109,13 @@ if (!__Pyx_RefNanny) {
   /* "linalg.pyx":92
  * 
  * 
- * def mag(double[:] v):             # <<<<<<<<<<<<<<
+ * def magSq(double[:] v):             # <<<<<<<<<<<<<<
  *     return _magSq(v)
  * 
  */
-  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_6linalg_11mag, NULL, __pyx_n_s_linalg); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 92, __pyx_L1_error)
+  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_6linalg_11magSq, NULL, __pyx_n_s_linalg); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 92, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_mag, __pyx_t_2) < 0) __PYX_ERR(0, 92, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_magSq, __pyx_t_2) < 0) __PYX_ERR(0, 92, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "linalg.pyx":107

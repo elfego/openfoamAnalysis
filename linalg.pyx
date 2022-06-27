@@ -89,7 +89,7 @@ cdef double _magSq(double[:] U):
     return U[0] * U[0] + U[1] * U[1] + U[2] * U[2]
 
 
-def mag(double[:] v):
+def magSq(double[:] v):
     return _magSq(v)
 
 
