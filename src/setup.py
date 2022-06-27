@@ -12,9 +12,10 @@ ext_modules = [
               sources=["cubicEqn.pyx"],
               libraries=["m"]),
     Extension("linalg",
-              sources=["linalg.pyx"])
+              sources=["linalg.pyx"],
+              libraries=["m"])
 ]
+
 
 setup(name=["linearEqn", "quadraticEqn", "cubicEqn", "linalg"],
       ext_modules=cythonize(ext_modules))
-
