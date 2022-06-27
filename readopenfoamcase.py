@@ -9,6 +9,8 @@ from numpy.linalg import norm
 from openfoamparser import parse_internal_field
 from misctools import (calc_val_weighted, calc_2nd_inv, calc_3rd_inv,
                        dSigma, local_eigensystem, get_vorticity, prod)
+from src.linalg import asymmVec, magSq, Qinv, Rinv, symmTraceless
+from src.eigh import eigvecsh
 import time as tm
 
 
@@ -289,6 +291,64 @@ class readOFcase:
         We_collision = (rho1 + rho2) * self.Rnozzle * \
             Ur * Ur / self.surface_tension
         save(join(o_dir, 'We_collision.npy'), We_collision)
+
+    def calc_gradU_deriv(self, time, overwrite=False):
+        print('\tCalculating gradU derived fields...')
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        if (exists(join(o_dir, 'vorticity.npy')) and
+            exists(join(o_dir, 'enstrophy.npy')) and
+            exists(join(o_dir, 'Q.npy')) and
+            exists(join(o_dir, 'R.npy')) and
+            exists(join(o_dir, 'visc_dissipation_density.npy')) and
+            exists(join(o_dir, 'eigenvector_1.npy')) and
+            exists(join(o_dir, 'eigenvector_2.npy')) and
+            exists(join(o_dir, 'eigenvector_3.npy')) and
+            exists(join(o_dir, 'eigenvalues.npy')) and
+            not overwrite):
+            return None
+
+        A = self.load_field('grad(U)', t_dir)
+
+        omega = vstack(list(map(asymmVec, A)))
+        save(join(o_dir, 'vorticity.npy'))
+        print('\t\tsaving vorticity.npy')
+
+        xi = array(list(map(magSq, omega)))
+        save(join(o_dir, 'enstrophy.npy'), xi)
+        print('\t\tsaving enstrophy.npy')
+        del omega
+
+        Q = array(list(map(Qinv, A)))
+        save(join(o_dir, 'Q.npy'), Q)
+        print('\t\tsaving Q.npy')
+
+        R = array(list(map(Rinv, A)))
+        save(join(o_dir, 'R.npy'), R)
+        print('\t\tsaving R.npy')
+        del R
+
+        save(join(o_dir, 'visc_dissipation_density.npy'),
+             2.0 * (xi - 2.0 * Q))
+        print('\t\tsaving visc_dissipation_density.npy')
+        del xi
+        del Q
+
+        N = len(A)
+        W = zeros((N, 12))
+        for i in range(N):
+            W[i] = eigvecsh(symmTraceless(A[i]))
+
+        save(join(o_dir, 'eigenvector_1.npy'), W[:,  0:3])
+        save(join(o_dir, 'eigenvector_2.npy'), W[:,  3:6])
+        save(join(o_dir, 'eigenvector_3.npy'), W[:,  6:9])
+        save(join(o_dir,   'eigenvalues.npy'), W[:, 9:12])
+        print('\t\tsaving eigenvector_#.npy')
+        del W
+
+        return None
 
     def calc_vorticity(self, time, overwrite=False):
         print('\tCalculating viscosity...')
@@ -856,21 +916,25 @@ class readOFcase:
             run_funcs.append('calc_dSigma')
             clock_times.append(tm.time())
 
-            self.calc_vorticity(time, overwrite=overwrite)
-            run_funcs.append('calc_vorticity')
+            self.calc_gradU_deriv(time, overwrite=overwrite)
+            run_funcs.append('calc_gradU_deriv')
             clock_times.append(tm.time())
 
-            self.calc_enstrophy(time, overwrite=overwrite)
-            run_funcs.append('calc_enstrophy')
-            clock_times.append(tm.time())
+            # self.calc_vorticity(time, overwrite=overwrite)
+            # run_funcs.append('calc_vorticity')
+            # clock_times.append(tm.time())
 
-            self.calc_Q(time, overwrite=overwrite)
-            run_funcs.append('calc_Q')
-            clock_times.append(tm.time())
+            # self.calc_enstrophy(time, overwrite=overwrite)
+            # run_funcs.append('calc_enstrophy')
+            # clock_times.append(tm.time())
 
-            self.calc_R(time, overwrite=overwrite)
-            run_funcs.append('calc_R')
-            clock_times.append(tm.time())
+            # self.calc_Q(time, overwrite=overwrite)
+            # run_funcs.append('calc_Q')
+            # clock_times.append(tm.time())
+
+            # self.calc_R(time, overwrite=overwrite)
+            # run_funcs.append('calc_R')
+            # clock_times.append(tm.time())
 
             self.calc_contact_area(time, overwrite=overwrite)
             run_funcs.append('calc_contact_area')
@@ -892,17 +956,17 @@ class readOFcase:
             run_funcs.append('calc_classification')
             clock_times.append(tm.time())
 
-            self.calc_visc_dissipation_density(time, overwrite=overwrite)
-            run_funcs.append('calc_visc_dissipation_density')
-            clock_times.append(tm.time())
+            # self.calc_visc_dissipation_density(time, overwrite=overwrite)
+            # run_funcs.append('calc_visc_dissipation_density')
+            # clock_times.append(tm.time())
 
             self.calc_visc_dissipation(time, overwrite=overwrite)
             run_funcs.append('calc_visc_dissipation')
             clock_times.append(tm.time())
 
-            self.calc_eigensystem(time, overwrite=overwrite)
-            run_funcs.append('calc_eigensystem')
-            clock_times.append(tm.time())
+            # self.calc_eigensystem(time, overwrite=overwrite)
+            # run_funcs.append('calc_eigensystem')
+            # clock_times.append(tm.time())
 
             self.calc_eigprojection(time, overwrite=overwrite)
             run_funcs.append('calc_eigprojection')

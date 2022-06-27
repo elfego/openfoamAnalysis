@@ -96,4 +96,3 @@ for i in range(3):
     err3 = compare_vecs(W1[3*i: 3*(i + 1)], W3[3*i: 3*(i + 1)])
     print("  ", err2, err3)
 
-

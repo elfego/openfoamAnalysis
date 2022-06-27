@@ -85,6 +85,16 @@ def mag(double[:] v):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
+cdef double _magSq(double[:] U):
+    return U[0] * U[0] + U[1] * U[1] + U[2] * U[2]
+
+
+def mag(double[:] v):
+    return _magSq(v)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef void _Hat(double[:] U):
     cdef double magU = _mag(U)
     U[0] /= magU
@@ -101,6 +111,16 @@ def symmTraceless(double[:] A):
         0.5 * (A[2] + A[6]),
         A[4],
         0.5 * (A[5] + A[7])
+    ])
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def asymmVec(double[:] A):
+    return array([
+        A[7] - A[5],
+        A[2] - A[6],
+        A[3] - A[1]
     ])
 
 
