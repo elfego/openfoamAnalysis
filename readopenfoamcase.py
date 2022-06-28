@@ -36,6 +36,10 @@ class readOFcase:
         self.out_dir = join(case_dir, 'postProcessing')
 
         self.mesh_loaded = False
+        self.old_style = False
+
+    def set_oldstyle(self):
+        self.old_style = True
 
     def load_mesh(self):
         self.mesh_loaded = True
@@ -721,6 +725,31 @@ class readOFcase:
         return None
 
     def calc_kinetic_energy(self, time, overwrite=False):
+        r"""
+        Calculates the total kinetic energy at a paritcular time.
+        It is the discretised volume integral
+
+        \[
+            K = \frac{1}{2} \int_\Omega \rho |\bm{u}|^2 dV,
+        \]
+
+        where $\rho$ and $\bm{u}$ are the density and velocity fields.
+
+        Params:
+        ======
+
+        time (str):
+        The time of the snapshot (as written by OpenFOAM).
+
+        overwrite (bool, optional):
+        Whereas to recalculate and dump the resulting value.
+
+        Returns:
+        =======
+        None, but produces the file `kinetic_energy.npy` which is a single
+        number.
+
+        """
         print('\tCalculating kinetic energy...')
         t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
@@ -915,25 +944,35 @@ class readOFcase:
             run_funcs.append('calc_dSigma')
             clock_times.append(tm.time())
 
-            self.calc_gradU_deriv(time, overwrite=overwrite)
-            run_funcs.append('calc_gradU_deriv')
-            clock_times.append(tm.time())
+            if self.old_style:
+                self.calc_vorticity(time, overwrite=overwrite)
+                run_funcs.append('calc_vorticity')
+                clock_times.append(tm.time())
 
-            # self.calc_vorticity(time, overwrite=overwrite)
-            # run_funcs.append('calc_vorticity')
-            # clock_times.append(tm.time())
+                self.calc_enstrophy(time, overwrite=overwrite)
+                run_funcs.append('calc_enstrophy')
+                clock_times.append(tm.time())
 
-            # self.calc_enstrophy(time, overwrite=overwrite)
-            # run_funcs.append('calc_enstrophy')
-            # clock_times.append(tm.time())
+                self.calc_Q(time, overwrite=overwrite)
+                run_funcs.append('calc_Q')
+                clock_times.append(tm.time())
 
-            # self.calc_Q(time, overwrite=overwrite)
-            # run_funcs.append('calc_Q')
-            # clock_times.append(tm.time())
+                self.calc_R(time, overwrite=overwrite)
+                run_funcs.append('calc_R')
+                clock_times.append(tm.time())
 
-            # self.calc_R(time, overwrite=overwrite)
-            # run_funcs.append('calc_R')
-            # clock_times.append(tm.time())
+                self.calc_visc_dissipation_density(time, overwrite=overwrite)
+                run_funcs.append('calc_visc_dissipation_density')
+                clock_times.append(tm.time())
+
+                self.calc_eigensystem(time, overwrite=overwrite)
+                run_funcs.append('calc_eigensystem')
+                clock_times.append(tm.time())
+
+            else:
+                self.calc_gradU_deriv(time, overwrite=overwrite)
+                run_funcs.append('calc_gradU_deriv')
+                clock_times.append(tm.time())
 
             self.calc_contact_area(time, overwrite=overwrite)
             run_funcs.append('calc_contact_area')
@@ -955,17 +994,9 @@ class readOFcase:
             run_funcs.append('calc_classification')
             clock_times.append(tm.time())
 
-            # self.calc_visc_dissipation_density(time, overwrite=overwrite)
-            # run_funcs.append('calc_visc_dissipation_density')
-            # clock_times.append(tm.time())
-
             self.calc_visc_dissipation(time, overwrite=overwrite)
             run_funcs.append('calc_visc_dissipation')
             clock_times.append(tm.time())
-
-            # self.calc_eigensystem(time, overwrite=overwrite)
-            # run_funcs.append('calc_eigensystem')
-            # clock_times.append(tm.time())
 
             self.calc_eigprojection(time, overwrite=overwrite)
             run_funcs.append('calc_eigprojection')
