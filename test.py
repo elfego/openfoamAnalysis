@@ -1,7 +1,4 @@
-from cubicEqn import cubicEqnRoots, evalCubicPolynomial
-import linalg
-import eig
-import eigh
+import nanoalgebra as na
 import numpy as np
 from numba import jit
 
@@ -34,14 +31,14 @@ def local_eigensystem(gradU):
 
 # if __name__ == '__main__':
 A = 8 * np.random.rand(3, 3) - 4
-print(np.trace(A) == linalg.tr(A.flatten()))
+print(np.trace(A) == na.tr(A.flatten()))
 A -= np.trace(A) / 3
 B = A.flatten()
 As = 0.5 * (A + A.T)
 Bs = As.flatten()
 
 
-Cs = linalg.symmTraceless(B)
+Cs = na.symmTraceless(B)
 print('Cs =\n', Cs)
 print('Bs =\n', Bs[[0, 1, 2, 4, 5]])
 
@@ -49,25 +46,25 @@ print('Bs =\n', Bs[[0, 1, 2, 4, 5]])
 print("P")
 p = np.trace(As)
 print(p)
-print(linalg.tr(Bs))
+print(na.tr(Bs))
 
 print("Q")
 q = 0.5 * (np.trace(As)**2 - np.trace(As @ As))
 print(q)
-print(linalg.Qinv(Bs))
-print(linalg.Qinvh(Cs))
+print(na.Qinv(Bs))
+print(na.Qinvh(Cs))
 
 
 print("R")
 r = -np.linalg.det(As)
 print(r)
-print(linalg.Rinv(Bs))
-print(linalg.Rinvh(Cs))
+print(na.Rinv(Bs))
+print(na.Rinvh(Cs))
 
 
 w1 = np.sort(np.linalg.eigvalsh(As))[::-1]
-w2 = eig.eigvals(Bs)
-w3 = eigh.eigvalsh(Cs)
+w2 = na.eigvals(Bs)
+w3 = na.eigvalsh(Cs)
 print("eigenvalues")
 print(w1)
 print(w2)
@@ -75,8 +72,8 @@ print(w3)
 
 print("eigenvectors")
 W1 = local_eigensystem(As)
-W2 = np.array(eig.eigvecs(Bs))
-W3 = np.array(eigh.eigvecsh(Cs))
+W2 = np.array(na.eigvecs(Bs))
+W3 = np.array(na.eigvecsh(Cs))
 print(W1)
 print(W2)
 print(W3)

@@ -51,6 +51,10 @@ cdef double _Pinv(double[:] A):
     return -_tr(A)
 
 
+def Pinv(double[:] A) -> double:
+    return _Pinv(A)
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef double _Qinv(double[:] A):
