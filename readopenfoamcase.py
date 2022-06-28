@@ -9,8 +9,7 @@ from numpy.linalg import norm
 from openfoamparser import parse_internal_field
 from misctools import (calc_val_weighted, calc_2nd_inv, calc_3rd_inv,
                        dSigma, local_eigensystem, get_vorticity, prod)
-from linalg import asymmVec, magSq, Qinv, Rinv, symmTraceless
-from eigh import eigvecsh
+from nanoalgebra import asymmVec, magSq, Qinv, Rinv, symmTraceless, eigvecsh
 import time as tm
 
 
