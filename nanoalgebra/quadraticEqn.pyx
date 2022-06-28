@@ -17,7 +17,8 @@ cdef (double, double) _quadraticEqnRoots(double a, double b, double c):
         x_[0] = -0.5 * b / a
         x_[1] = x_[0]
     else:
-        x_[0] = FP_NAN, FP_NAN
+        x_[0] = FP_NAN
+        x_[1] = FP_NAN
 
     return (x_[0], x_[1])
 

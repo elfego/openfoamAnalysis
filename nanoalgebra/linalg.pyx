@@ -47,34 +47,6 @@ def det(double[:] A):
     return _det(A)
 
 
-cdef double _Pinv(double[:] A):
-    return -_tr(A)
-
-
-def Pinv(double[:] A) -> double:
-    return _Pinv(A)
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef double _Qinv(double[:] A):
-    return (
-        A[0] * A[4] - A[1] * A[3] +
-        A[0] * A[8] - A[2] * A[6] +
-        A[4] * A[8] - A[5] * A[7]
-    )
-
-
-def Qinv(double[:] A) -> double:
-    return _Qinv(A)
-
-
-cdef double _Rinv(double[:] A):
-    return -_det(A)
-
-
-def Rinv(double[:] A):
-    return _Rinv(A)
 
 
 @cython.boundscheck(False)
@@ -108,6 +80,16 @@ cdef void _Hat(double[:] U):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
+cdef void _symmTraceless(double[:] A, double[:] B):
+    B[0] = A[0]
+    B[1] = 0.5 * (A[1] + A[3]),
+    B[2] = 0.5 * (A[2] + A[6]),
+    B[3] = A[4],
+    B[4] = 0.5 * (A[5] + A[7])
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def symmTraceless(double[:] A):
     return array([
         A[0],
@@ -127,34 +109,4 @@ def asymmVec(double[:] A):
         A[3] - A[1]
     ])
 
-
-cdef double _Qinvh(double[:] A):
-    return -1.0 * (
-        A[0] * A[0] +
-        A[1] * A[1] +
-        A[2] * A[2] +
-        A[3] * A[3] +
-        A[4] * A[4] +
-        A[0] * A[3]
-    )
-
-
-def Qinvh(double[:] A) -> double:
-    return _Qinvh(A)
-
-
-cdef double _Rinvh(double[:] A):
-    return (
-        + A[0] * A[0] * A[3]
-        - A[0] * A[1] * A[1]
-        + A[0] * A[3] * A[3]
-        + A[0] * A[4] * A[4]
-        - A[1] * A[1] * A[3]
-        + A[2] * A[2] * A[3]
-        - A[1] * A[2] * A[4] * 2
-    )
-
-
-def Rinvh(double[:] A) -> double:
-    return _Rinvh(A)
 

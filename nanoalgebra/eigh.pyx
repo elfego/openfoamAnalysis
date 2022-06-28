@@ -2,7 +2,8 @@
 cimport cython
 from libc.math cimport sqrt, fabs, FP_NAN
 from cubicEqn cimport _cubicEqnRoots
-from linalg cimport _Qinvh, _Rinvh, _mag
+from linalg cimport _mag, _symmTraceless
+from invarsh cimport _Qinvh, _Rinvh
 from eig cimport _eigvals
 
 
@@ -15,6 +16,8 @@ cdef void _m_cross(double[:] W):
     pass
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef (double, double, double) _eigvalsh(double[:] A):
     cdef double w0, w1, w2, tmp
     w0, w1, w2 = _cubicEqnRoots(1.0, 0.0, _Qinvh(A), _Rinvh(A))
@@ -96,9 +99,7 @@ cdef _eigvecsh(double[:] T, double w):
 @cython.wraparound(False)
 def eigvecsh(double[:] A):
     cdef double W[12]
-
     W[9], W[10], W[11] = _eigvalsh(A)
-
     W[0], W[1], W[2] = _eigvecsh(A, W[ 9])
     W[6], W[7], W[8] = _eigvecsh(A, W[11])
     _m_cross(W)

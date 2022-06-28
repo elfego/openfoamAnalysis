@@ -2,9 +2,12 @@
 cimport cython
 from libc.math cimport fabs
 from cubicEqn cimport _cubicEqnRoots
-from linalg cimport _cross, _Pinv, _Qinv, _Rinv, _mag
+from linalg cimport _cross, _mag
+from invars cimport _Pinv, _Qinv, _Rinv
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef (double, double, double) _eigvals(double[:] A):
     cdef double w0, w1, w2, tmp
     w0, w1, w2 = _cubicEqnRoots(1.0, _Pinv(A), _Qinv(A), _Rinv(A))
