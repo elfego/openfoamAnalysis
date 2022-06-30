@@ -9,7 +9,7 @@ from numpy.linalg import norm
 from openfoamparser import parse_internal_field
 from misctools import (calc_val_weighted, calc_2nd_inv, calc_3rd_inv,
                        dSigma, local_eigensystem, get_vorticity, prod)
-from nanoalgebra import asymmVec, magSq, Qinv, Rinv, symmTraceless, eigvecsh
+from nanoalgebra import asymmVec, magSq, Qinv, Rinv, symmTraceless, eigvecsh, eigvecs
 import time as tm
 
 
@@ -343,7 +343,8 @@ class readOFcase:
 
         W = zeros((N, 12))
         for i in range(N):
-            W[i] = eigvecsh(symmTraceless(A[i]))
+            # W[i] = eigvecsh(symmTraceless(A[i]))
+            W[i] = eigvecs(A[i])
         save(join(o_dir, 'eigenvector_1.npy'), W[:,  0:3])
         save(join(o_dir, 'eigenvector_2.npy'), W[:,  3:6])
         save(join(o_dir, 'eigenvector_3.npy'), W[:,  6:9])
