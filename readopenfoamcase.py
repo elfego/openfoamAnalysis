@@ -902,7 +902,7 @@ class readOFcase:
         eps_D = self.load_post_field('scalar_dissipation_density.npy', time)
         eps_D *= self.diffusivity / self.V 
        
-        W = linspace(0, 180, bins + 1)
+        W = linspace(0, 192.0, bins + 1)
         Bins = 0.5 * (W[1:] + W[:-1])
 
         for i in range(4):
@@ -911,8 +911,13 @@ class readOFcase:
                                 weights=dS[fltr], density=True)
             # Bins = 0.5 * (W[1:] + W[:-1])
             save(join(o_dir, f'topology_dissip_histogram_{i}.npy'),
-                 [Hist, Bins]) 
-
+                 [Hist * sum(dS[fltr]), Bins]) 
+        Hist, _ = histogram(eps_D, bins=W,
+                            weights=dS, density=True)
+        # Bins = 0.5 * (W[1:] + W[:-1])
+        save(join(o_dir, 'dissipation_histogram.npy'),
+             [Hist * sum(dS), Bins])
+        return None
 
     def clean(self, time):
         print('\tCleaning up...')
