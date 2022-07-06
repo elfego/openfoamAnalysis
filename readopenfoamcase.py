@@ -4,7 +4,8 @@ from re import findall
 from sys import stderr
 from numpy import (arange, array, r_, sum, save, savez_compressed,
                    load, sqrt, dot, zeros, zeros_like, ones_like,
-                   vstack, cross, histogram, histogram2d, logspace)
+                   vstack, cross, histogram, histogram2d, logspace,
+                   linspace)
 from numpy.linalg import norm
 from openfoamparser import parse_internal_field
 from misctools import (calc_val_weighted, calc_2nd_inv, calc_3rd_inv,
@@ -875,6 +876,43 @@ class readOFcase:
         save(join(o_dir, 'enstrophy_histogram.npy'),
              vstack((sbins, pdf_gas / db, pdf_liq / db)))
         return None
+
+    def calc_topo_dissip_histogram(self, time, overwrite=False, bins=16):
+        print('\tCalculating topology-dissipation histogram...')
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        if (exists(join(o_dir, 'topology_dissip_histogram_0.npy')) and
+            exists(join(o_dir, 'topology_dissip_histogram_1.npy')) and
+            exists(join(o_dir, 'topology_dissip_histogram_2.npy')) and
+            exists(join(o_dir, 'topology_dissip_histogram_3.npy')) and
+            not overwrite):
+            return None
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+
+        # alpha1 = self.load_field('alpha.pregel', t_dir)
+        # alpha2 = self.load_field('alpha.crosslinker', t_dir)
+        # reg = alpha1 * alpha2 >= 0.16 * ones_like(alpha1)
+        
+        dS = norm(self.load_post_field('dSigma.npy', time), axis=1)
+        TC = self.load_post_field('classification.npz', time)['arr_0']
+        eps_D = self.load_post_field('scalar_dissipation_density.npy', time)
+        eps_D *= self.diffusivity / self.V 
+       
+        W = linspace(0, 180, bins + 1)
+        Bins = 0.5 * (W[1:] + W[:-1])
+
+        for i in range(4):
+            fltr = (TC == i * ones_like(TC, dtype=int))
+            Hist, _ = histogram(eps_D[fltr], bins=W,
+                                weights=dS[fltr], density=True)
+            # Bins = 0.5 * (W[1:] + W[:-1])
+            save(join(o_dir, f'topology_dissip_histogram_{i}.npy'),
+                 [Hist, Bins]) 
+
 
     def clean(self, time):
         print('\tCleaning up...')
