@@ -5,7 +5,7 @@ from sys import stderr
 from numpy import (arange, array, r_, sum, save, savez_compressed,
                    load, sqrt, dot, zeros, zeros_like, ones_like,
                    vstack, cross, histogram, histogram2d, logspace,
-                   linspace)
+                   linspace, log10, meshgrid)
 from numpy.linalg import norm
 from openfoamparser import parse_internal_field
 from misctools import (calc_val_weighted, calc_2nd_inv, calc_3rd_inv,
@@ -893,30 +893,54 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
 
-        # alpha1 = self.load_field('alpha.pregel', t_dir)
-        # alpha2 = self.load_field('alpha.crosslinker', t_dir)
-        # reg = alpha1 * alpha2 >= 0.16 * ones_like(alpha1)
-        
         dS = norm(self.load_post_field('dSigma.npy', time), axis=1)
+        dS /= sum(dS)
         TC = self.load_post_field('classification.npz', time)['arr_0']
         eps_D = self.load_post_field('scalar_dissipation_density.npy', time)
         eps_D *= self.diffusivity / self.V 
        
         W = linspace(0, 192.0, bins + 1)
         Bins = 0.5 * (W[1:] + W[:-1])
+        dB = W[1] - W[0]
 
         for i in range(4):
             fltr = (TC == i * ones_like(TC, dtype=int))
-            Hist, _ = histogram(eps_D[fltr], bins=W,
-                                weights=dS[fltr], density=True)
-            # Bins = 0.5 * (W[1:] + W[:-1])
+            Hist, _ = histogram(eps_D[fltr], bins=W, weights=dS[fltr] / dB)
             save(join(o_dir, f'topology_dissip_histogram_{i}.npy'),
-                 [Hist * sum(dS[fltr]), Bins]) 
-        Hist, _ = histogram(eps_D, bins=W,
-                            weights=dS, density=True)
-        # Bins = 0.5 * (W[1:] + W[:-1])
+                 [Hist, Bins]) 
+        Hist, _ = histogram(eps_D, bins=W, weights=dS / dB)
         save(join(o_dir, 'dissipation_histogram.npy'),
-             [Hist * sum(dS), Bins])
+             [Hist, Bins])
+        return None
+
+    def calc_enstrophy_diff_dissip_histogram(self, time, overwrite=False, bins=16):
+        print('\tCalculating enstrophy-dissipation histogram...')
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+        
+        if (exists(join(o_dir, 'enstrophy_dissip_histogram.npy')) and
+            not overwrite):
+            return None
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+
+        xi = self.load_post_field('enstrophy.npy', time)
+        eps_D = self.load_post_field('scalar_dissipation_density.npy', time)
+        eps_D *= self.diffusivity / self.V
+
+        bins_lxi = linspace(-13, 11, bins + 1)
+        bins_eps = linspace(0, 192.0, bins + 1)
+
+        H, X, Y = histogram2d(log10(xi), eps_D, density=True,
+                              bins=[bins_lxi, bins_eps])
+        X = 0.5 * (X[1:] + X[:-1])
+        Y = 0.5 * (Y[1:] + Y[:-1])
+        XX, YY = meshgrid(X, Y)
+
+        save(join(o_dir, 'enstrophy_dissip_histogram.npy'),
+             [H, XX, YY])
         return None
 
     def clean(self, time):
