@@ -33,6 +33,7 @@ preDatabase = {
     'time': [],
     'impact parameter': [],
     'mixture volume': [],
+    'segregation': [],
     'mixing intensity': [],
     'scalar dissipation rate': [],
     'visc dissipation': [],
@@ -110,6 +111,9 @@ for time in times:
     Vm = np.load(join(read_dir, 'mixtureVolume.npy'))
     preDatabase['mixture volume'].append(Vm / (V1 + V2))
     preDatabase['mixing intensity'].append(1 - np.sqrt(1 - Vm / (V1 + V2)))
+
+    tmp = np.load(join(read_dir, 'segregation.npy'))
+    preDatabase['segregation'].append(tmp)
 
     eps_D = np.load(join(read_dir, 'scalar_dissipation_rate.npy'))
     preDatabase['scalar dissipation rate'].append(eps_D)

@@ -462,6 +462,31 @@ class readOFcase:
         save(join(o_dir, 'mixtureVolume.npy'), 4 * sum(alpha1 * alpha2 * self.V))
         return None
 
+    def calc_segregation(self, time, overwrite=False):
+        print('\tCalculating segregation')
+
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        if exists(join(o_dir, 'segregation.npy')) and not overwrite:
+            return None
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+
+        alpha1 = self.load_field('alpha.pregel', t_dir)
+        alpha2 = self.load_field('alpha.crosslinker', t_dir)
+        V1 = self.load_post_field('V.pregel.npy', time)
+        V2 = self.load_post_field('V.crosslinker.npy', time)
+
+        seg = ((V2 / V1) * dot(alpha1**2, self.V)
+             + (V1 / V2) * dot(alpha2**2, self.V)
+             - 2.0 * dot(alpha1 * alpha2, self.V)) / (V1 + V2)
+
+        save(join(o_dir, 'segregation.npy'), seg)
+        return None
+
     def calc_dissipation_density(self, time, overwrite=False):
         print('\tCalculating dissipation density...')
         t_dir = join(self.case_dir, time)
@@ -1048,6 +1073,10 @@ class readOFcase:
 
             self.calc_volume_mixture(time, overwrite=overwrite)
             run_funcs.append('calc_volume_mixture')
+            clock_times.append(tm.time())
+
+            self.calc_segregation(time, overwrite=overwrite)
+            run_funcs.append('calc_segregation')
             clock_times.append(tm.time())
 
             self.calc_dissipation_density(time, overwrite=overwrite)
