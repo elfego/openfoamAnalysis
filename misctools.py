@@ -50,7 +50,7 @@ def enstrophy(A):
 @jit(nopython=True, cache=True, nogil=True, fastmath=True)
 def normalise(v):
     n = norm(v)
-    if n < 1.0e-12:
+    if n < 1.0e-13:
         return v / n
     else:
         return v

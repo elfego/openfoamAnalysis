@@ -8,10 +8,21 @@ from numpy import (arange, array, r_, sum, save, savez_compressed,
                    linspace, log10, meshgrid)
 from numpy.linalg import norm
 from openfoamparser import parse_internal_field
-from misctools import (calc_val_weighted, calc_2nd_inv, calc_3rd_inv,
-                       dSigma, local_eigensystem, get_vorticity, prod)
-from nanoalgebra import asymmVec, magSq, Qinv, Rinv, symmTraceless, eigvecsh, eigvecs
+from misctools import (calc_val_weighted, dSigma, get_vorticity,
+                       local_eigensystem, prod, calc_2nd_inv, calc_3rd_inv)
+from nanoalgebra import (asymmVec, magSq, Qinv, Rinv, symmTraceless,
+                         eigvecsh, eigvecs)
 import time as tm
+
+
+def normalise(v):
+    N = len(v)
+    L = norm(v, axis=1)
+    w = zeros_like(v)
+    for idx in range(N):
+        if L[idx] > 1e-13:
+            w[idx] = v[idx] / L[idx]
+    return w
 
 
 class readOFcase:
@@ -59,7 +70,7 @@ class readOFcase:
     def load_post_field(self, field_name, path):
         ifile = join(self.out_dir, path, field_name)
         if exists(ifile):
-            field = load(ifile)
+            field = load(ifile, allow_pickle=True)
         else:
             field = None
             raise FileExistsError
@@ -598,13 +609,20 @@ class readOFcase:
         gradU = self.load_field('grad(U)', time)
         N = len(gradU)
         W = zeros((N, 12))
+
+        # for i in range(N):
+        #     W[i] = local_eigensystem(gradU[i])
+
         for i in range(N):
-            W[i] = local_eigensystem(gradU[i])
+            W[i] = eigvecs(gradU[i])
 
         save(join(o_dir, 'eigenvector_1.npy'), W[:,  0:3])
         save(join(o_dir, 'eigenvector_2.npy'), W[:,  3:6])
         save(join(o_dir, 'eigenvector_3.npy'), W[:,  6:9])
         save(join(o_dir,   'eigenvalues.npy'), W[:, 9:12])
+        print('\t\tsaving eigenvector_#.npy')
+        del W
+
         return None
 
     def calc_eigprojection(self, time, overwrite=False):
@@ -968,6 +986,52 @@ class readOFcase:
              [H, XX, YY])
         return None
 
+    def calc_eigenvec_eps_histograms(self, time, overwrite=False, bins=64):
+        print('\tCalculating eigenvector proj. dissipation histograms...')
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        if (exists(join(o_dir, 'n-dot-e_eps_hist2d.npy')) and
+            exists(join(o_dir, 'avgs_ndote_eps.npy')) and
+            not overwrite):
+            return None
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+        
+        u0 = 1.2
+        tau = 2 * self.Rnozzle / u0
+
+        eps_D = self.load_post_field('scalar_dissipation_density.npy', time)
+        eps_D = self.diffusivity * abs(eps_D) / self.V
+
+        dS = self.load_post_field('dSigma.npy', time)
+        ds = norm(dS, axis=1)
+        ds /= sum(ds)
+
+        bins_e = linspace(0, 1, bins + 1)
+        bins_d = linspace(0, 0.1 / tau, bins + 1)
+        X, Y = meshgrid(bins_e, bins_d)
+        aveD = sum(eps_D * ds)
+
+        avE = [[]] * 3
+        H = [[]] * 3
+
+        for i in range(3):
+            E = self.load_post_field(f'eigenvector_{i+1}.npy', time)
+            pE = abs(sum(E * normalise(dS), axis=1))
+            print('max and min for pE = ', max(pE), min(pE))
+            avE[i] = sum(pE * ds)
+            H[i], _, _ = histogram2d(pE, eps_D, bins=[bins_e, bins_d],
+                                     weights=ds, density=True)
+            H[i] = H[i].transpose()
+
+        print(avE)
+        save(join(o_dir, 'n-dot-e_eps_hist2d.npy'), [*H, X, Y])
+        save(join(o_dir, 'avgs_ndote_eps.npy'), [*avE, aveD])
+        return None
+
     def clean(self, time):
         print('\tCleaning up...')
         o_dir = join(self.out_dir, time)
@@ -1137,6 +1201,10 @@ class readOFcase:
 
             self.calc_enstrophy_histogram(time, overwrite=overwrite)
             run_funcs.append('calc_enstrophy_histogram')
+            clock_times.append(tm.time())
+
+            self.calc_eigenvec_eps_histograms(time, overwrite=overwrite)
+            run_funcs.append('calc_eigenvec_eps_histograms')
             clock_times.append(tm.time())
 
             print('\tWriting down the `end.lck` file...')
