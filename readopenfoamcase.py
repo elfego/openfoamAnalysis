@@ -1021,13 +1021,11 @@ class readOFcase:
         for i in range(3):
             E = self.load_post_field(f'eigenvector_{i+1}.npy', time)
             pE = abs(sum(E * normalise(dS), axis=1))
-            print('max and min for pE = ', max(pE), min(pE))
             avE[i] = sum(pE * ds)
             H[i], _, _ = histogram2d(pE, eps_D, bins=[bins_e, bins_d],
                                      weights=ds, density=True)
             H[i] = H[i].transpose()
 
-        print(avE)
         save(join(o_dir, 'n-dot-e_eps_hist2d.npy'), [*H, X, Y])
         save(join(o_dir, 'avgs_ndote_eps.npy'), [*avE, aveD])
         return None
