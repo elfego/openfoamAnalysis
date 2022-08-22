@@ -116,6 +116,8 @@ f1 = interp1d(cc_[:iM + 1, 1][::-1], cc_[:iM + 1, 0][::-1], fill_value='extrapol
 f2 = interp1d(cc_[iM:, 1], cc_[iM:, 0], fill_value='extrapolate')
 yy = np.linspace(np.min(cc[:, 1]), np.max(cc[:, 1]), 1024)
 w = abs(f2(yy) - f1(yy))
+iW = w.argmax()
+qq = np.array([[f1(yy[iW]), f2(yy[iW])], [yy[iW], yy[iW]]]).transpose()
 
 
 # contours = find_contours(X_, Y_, P3, [np.max(P3) * thres * 1.6])
