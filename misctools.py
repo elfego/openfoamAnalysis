@@ -1,7 +1,8 @@
-from numpy import sum, dot, save, nditer, zeros_like, hstack, array, trace, cross
+# misctools.py
+
+from numpy import sum, dot, save, nditer, hstack, array, trace
 from numpy.linalg import det, eigh, norm
-import numba_scipy
-from numba import jit, prange, float64
+from numba import jit
 
 
 @jit(nopython=True, cache=True, fastmath=True, nogil=True)
@@ -18,7 +19,6 @@ def calc_2nd_inv(A_flat):
 @jit(nopython=True, cache=True, fastmath=True, nogil=True)
 def calc_3rd_inv(A_flat):
     return -det(A_flat.reshape((3, 3)))
-
 
 
 def calc_val_weighted(X, dV, normalised=False, fsave=None):
@@ -57,9 +57,10 @@ def normalise(v):
 
 
 def dSigma(alpha1, alpha2, gradAlpha1, gradAlpha2, V, out=None):
+    flags = ['external_loop'] * 5 + ['buffered']
+    op_flags = [['readonly']] * 5 + [['writeonly', 'allocate']]
     with nditer([alpha1, alpha2, gradAlpha1.T, gradAlpha2.T, V, out],
-                flags=['external_loop'] * 5 + ['buffered'],
-                op_flags=[['readonly']] * 5 + [['writeonly', 'allocate']]) as it:
+                flags=flags, op_flags=op_flags) as it:
         for a1, a2, ga1, ga2, v, y in it:
             y[...] = (a1 * ga2 - a2 * ga1) * v
         return it.operands[5].T
@@ -77,9 +78,9 @@ def local_eigensystem(gradU):
 
 
 def prod(a, V, out=None):
-    with nditer([a, V.T, out],
-                flags=['external_loop'] * 2 + ['buffered'],
-                op_flags=[['readonly']] * 2 + [['writeonly', 'allocate']]) as it:
+    flags = ['external_loop'] * 2 + ['buffered']
+    op_flags = [['readonly']] * 2 + [['writeonly', 'allocate']]
+    with nditer([a, V.T, out], flags=flags, op_flags=op_flags) as it:
         for aa, vv, y in it:
             y[...] = aa * vv
         return it.operands[2].T

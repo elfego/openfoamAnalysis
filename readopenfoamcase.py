@@ -940,8 +940,8 @@ class readOFcase:
         dS /= sum(dS)
         TC = self.load_post_field('classification.npz', time)['arr_0']
         eps_D = self.load_post_field('scalar_dissipation_density.npy', time)
-        eps_D *= self.diffusivity / self.V 
-       
+        eps_D *= self.diffusivity / self.V
+
         W = linspace(0, 192.0, bins + 1)
         Bins = 0.5 * (W[1:] + W[:-1])
         dB = W[1] - W[0]
@@ -950,7 +950,7 @@ class readOFcase:
             fltr = (TC == i * ones_like(TC, dtype=int))
             Hist, _ = histogram(eps_D[fltr], bins=W, weights=dS[fltr] / dB)
             save(join(o_dir, f'topology_dissip_histogram_{i}.npy'),
-                 [Hist, Bins]) 
+                 [Hist, Bins])
         Hist, _ = histogram(eps_D, bins=W, weights=dS / dB)
         save(join(o_dir, 'dissipation_histogram.npy'),
              [Hist, Bins])
@@ -961,7 +961,7 @@ class readOFcase:
         t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
-        
+
         if (exists(join(o_dir, 'enstrophy_dissip_histogram.npy')) and
             not overwrite):
             return None
@@ -986,6 +986,88 @@ class readOFcase:
              [H, XX, YY])
         return None
 
+    def calc_scalar_turbulence_interaction_density(self, time, overwrite=False):
+        r"""
+        Calculates the Scalar-turbulence interaction field
+
+        \[
+            STI = -2 \bm{m}_{12} \cdot \nabla \bm{u} \cdot \bm{m}_{12},
+        \]
+
+        where $\bm{m}_{12}$ and $\bm{u}$ are the surface gradient vector
+        and velocity fields, respectively.
+
+        Params:
+        ======
+
+        time (str):
+        The time of the snapshot (as written by OpenFOAM).
+
+        overwrite (bool, optional):
+        Whereas to recalculate and dump the resulting value.
+
+        Returns:
+        =======
+        None, but produces the file `scalar_turbulence_interaction_density.npy`
+        which is a field.
+
+        """
+
+        print('\tCalculating enstrophy-dissipation histogram...')
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        ofname = 'scalar_turbulence_interaction_density.npy'
+
+        if (exists(join(o_dir, ofname)) and not overwrite):
+            return None
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+
+        m = self.load_post_field('dSigma.npy', time) / self.V
+        A = self.load_field('grad(U)', t_dir)
+
+        STI = -2.0 * self.diffusivity * (
+            A[:, 0] * m[:, 0]**2 +
+            A[:, 4] * m[:, 1]**2 +
+            A[:, 8] * m[:, 2]**2 +
+            (A[:, 1] + A[:, 3]) * m[:, 0] * m[:, 1] +
+            (A[:, 2] + A[:, 6]) * m[:, 0] * m[:, 2] +
+            (A[:, 5] + A[:, 7]) * m[:, 1] * m[:, 2]
+        )
+
+        save(join(o_dir, ofname), STI)
+        return None
+
+    def calc_scalar_turbulence_interaction(self, time, overwrite=False):
+        r"""
+        Calculates the volume integral of the Scalar-turbulence interaction
+        integral over the volume enclosed by the liquid,
+        \[
+            = int_{\Omega_l} STI \mathrm{d} V
+        \]
+        """
+        print('\tCalculating the scalar turbulence interaction integral')
+        t_dir = join(self.case_dir, time)
+        o_dir = join(self.out_dir, time)
+        makedirs(o_dir, exist_ok=True)
+
+        ofname = 'scalar_turbulence_interaction.npy'
+
+        if (exists(join(o_dir, ofname)) and not overwrite):
+            return None
+
+        if not self.mesh_loaded:
+            self.load_mesh()
+
+        dV = (1.0 - self.load_field('alpha.air', t_dir)) * self.V
+        STI = self.load_post_field('scalar_turbulence_interaction_density.npy',
+                                   time)
+        save(join(o_dir, ofname), dot(STI, dV))
+        return None
+
     def calc_eigenvec_eps_histograms(self, time, overwrite=False, bins=64, maxEd=0.1):
         print('\tCalculating eigenvector proj. dissipation histograms...')
         t_dir = join(self.case_dir, time)
@@ -999,7 +1081,7 @@ class readOFcase:
 
         if not self.mesh_loaded:
             self.load_mesh()
-        
+
         u0 = 1
         tau = 2 * self.Rnozzle / u0
 
@@ -1193,17 +1275,17 @@ class readOFcase:
             run_funcs.append('calc_angular_momentum')
             clock_times.append(tm.time())
 
-            self.calc_QR_histograms(time, overwrite=overwrite)
-            run_funcs.append('calc_QR_histograms')
-            clock_times.append(tm.time())
+            # self.calc_QR_histograms(time, overwrite=overwrite)
+            # run_funcs.append('calc_QR_histograms')
+            # clock_times.append(tm.time())
 
-            self.calc_enstrophy_histogram(time, overwrite=overwrite)
-            run_funcs.append('calc_enstrophy_histogram')
-            clock_times.append(tm.time())
+            # self.calc_enstrophy_histogram(time, overwrite=overwrite)
+            # run_funcs.append('calc_enstrophy_histogram')
+            # clock_times.append(tm.time())
 
-            self.calc_eigenvec_eps_histograms(time, overwrite=overwrite)
-            run_funcs.append('calc_eigenvec_eps_histograms')
-            clock_times.append(tm.time())
+            # self.calc_eigenvec_eps_histograms(time, overwrite=overwrite)
+            # run_funcs.append('calc_eigenvec_eps_histograms')
+            # clock_times.append(tm.time())
 
             print('\tWriting down the `end.lck` file...')
             with open(join(o_dir, 'end.lck'), 'wt') as ofile:
