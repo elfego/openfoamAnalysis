@@ -986,7 +986,7 @@ class readOFcase:
              [H, XX, YY])
         return None
 
-    def calc_eigenvec_eps_histograms(self, time, overwrite=False, bins=64):
+    def calc_eigenvec_eps_histograms(self, time, overwrite=False, bins=64, maxEd=0.1):
         print('\tCalculating eigenvector proj. dissipation histograms...')
         t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
@@ -1000,7 +1000,7 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
         
-        u0 = 1.2
+        u0 = 1
         tau = 2 * self.Rnozzle / u0
 
         eps_D = self.load_post_field('scalar_dissipation_density.npy', time)
@@ -1011,7 +1011,7 @@ class readOFcase:
         ds /= sum(ds)
 
         bins_e = linspace(0, 1, bins + 1)
-        bins_d = linspace(0, 0.1 / tau, bins + 1)
+        bins_d = linspace(0, maxEd / tau, bins + 1)
         X, Y = meshgrid(bins_e, bins_d)
         aveD = sum(eps_D * ds)
 
