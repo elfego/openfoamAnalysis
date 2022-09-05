@@ -1129,6 +1129,7 @@ class readOFcase:
             'visc_dissipation_density.npy',
             'classification.npz',
             'scalar_dissipation_density.npy'
+            'scalar_turbulence_interaction_density.npy'
         ]
         for fl in file_list:
             try:
@@ -1286,6 +1287,14 @@ class readOFcase:
             # self.calc_eigenvec_eps_histograms(time, overwrite=overwrite)
             # run_funcs.append('calc_eigenvec_eps_histograms')
             # clock_times.append(tm.time())
+
+            self.calc_scalar_turbulence_interaction_density(time, overwrite=overwrite)
+            run_funcs.append('calc_scalar_turbulence_interaction_density')
+            clock_times.append(tm.time)
+
+            self.calc_scalar_turbulence_interaction(time, overwrite=overwrite)
+            run_funcs.append('calc_scalar_turbulence_interaction')
+            clock_times.append(tm.time)
 
             print('\tWriting down the `end.lck` file...')
             with open(join(o_dir, 'end.lck'), 'wt') as ofile:
