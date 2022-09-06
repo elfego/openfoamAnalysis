@@ -1128,7 +1128,7 @@ class readOFcase:
             'eigenvector_3.npy',
             'visc_dissipation_density.npy',
             'classification.npz',
-            'scalar_dissipation_density.npy'
+            'scalar_dissipation_density.npy',
             'scalar_turbulence_interaction_density.npy'
         ]
         for fl in file_list:
