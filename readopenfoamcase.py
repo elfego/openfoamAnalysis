@@ -50,6 +50,15 @@ class readOFcase:
         self.mesh_loaded = False
         self.old_style = False
 
+        self.files_funcs = {
+            'V.pregel.npy': self.calc_droplet_volumes,
+            'V.crosslinker.npy': self.calc_droplet_volumes,
+            'X.pregel.npy': self.calc_Xcm,
+            'X.crosslinker.npy': self.calc_Xcm,
+            'U.pregel.npy': self.calc_Ucm,
+            'U.crosslinker.npy': self.calc_Ucm
+        }
+
     def set_oldstyle(self):
         self.old_style = True
 
@@ -80,6 +89,14 @@ class readOFcase:
         self.Rnozzle = nozzle_radius
         return None
 
+    def depends(self, file_list, time):
+        o_dir = join(self.out_dir, time)
+        for ifile in file_list:
+            if exists(join(o_dir, ifile)):
+                continue
+            else:
+                self.files_funcs[ifile](time)
+
     def list_time_dirs(self):
         with open(join(self.system_dir, 'controlDict'), 'r') as handler:
             for ln in handler.readlines():
@@ -95,6 +112,8 @@ class readOFcase:
         t_dirs = [f'{t:g}' for t in frames]
 
         return t_dirs
+
+
 
     def get_application(self):
         with open(join(self.system_dir, 'controlDict'), 'r') as handler:
@@ -185,8 +204,11 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
 
+        print('\t\tsaving V.pregel.npy')
         save(join(o_dir,      'V.pregel.npy'), dot(alpha1, self.V))
+        print('\t\tsaving V.crosslinker.npy')
         save(join(o_dir, 'V.crosslinker.npy'), dot(alpha2, self.V))
+        return None
 
     def calc_Xcm(self, time, overwrite=False):
         print('\tCalculating centre of mass...')
@@ -208,12 +230,16 @@ class readOFcase:
         dv1 = alpha1 * self.V
         dv2 = alpha2 * self.V
 
+        print('\t\tsaving X.pregel')
         calc_val_weighted(self.R, dv1,
                           normalised=True,
                           fsave=join(o_dir, 'X.pregel.npy'))
+        print('\t\tsaving X.crosslinker')
         calc_val_weighted(self.R, dv2,
                           normalised=True,
                           fsave=join(o_dir, 'X.crosslinker.npy'))
+
+        return None
 
     def calc_Ucm(self, time, overwrite=False):
         print('\tCalculating velocity of the centre of mass...')
@@ -230,6 +256,8 @@ class readOFcase:
         alpha1 = self.load_field('alpha.pregel', t_dir)
         alpha2 = self.load_field('alpha.crosslinker', t_dir)
         U = self.load_field('U', t_dir)
+
+        self.depends(['V.pregel.npy', 'V.crosslinker.npy'], time)
         V1 = self.load_post_field('V.pregel.npy', time)
         V2 = self.load_post_field('V.crosslinker.npy', time)
 
@@ -239,14 +267,18 @@ class readOFcase:
         dv1 = alpha1 * self.V
         dv2 = alpha2 * self.V
 
+        print('\t\tsaving U.pregel.npy')
         U1 = calc_val_weighted(U, dv1,
                                normalised=True,
                                fsave=join(o_dir, 'U.pregel.npy'))
+        print('\t\tsaving U.crosslinker.npy')
         U2 = calc_val_weighted(U, dv2,
                                normalised=True,
                                fsave=join(o_dir, 'U.crosslinker.npy'))
         Ucm = (V1 * U1 + V2 * U2) / (V1 + V2)
+        print('\t\tsaving Ucm.npy')
         save(join(o_dir, 'Ucm.npy'), Ucm)
+        return None
 
     def calc_impact_parameter(self, time, overwrite=False):
         print('\tCalculating impact parameter...')
@@ -256,9 +288,11 @@ class readOFcase:
         if exists(join(o_dir, 'impact_param.npy')) and not overwrite:
             return None
 
+        self.depends(['X.pregel.npy', 'X.crosslinker.npy',
+                      'U.pregel.npy', 'U.crosslinker.npy'], time)
+
         X1 = self.load_post_field('X.pregel.npy', time)
         X2 = self.load_post_field('X.crosslinker.npy', time)
-
         U1 = self.load_post_field('U.pregel.npy', time)
         U2 = self.load_post_field('U.crosslinker.npy', time)
 
@@ -268,7 +302,9 @@ class readOFcase:
         b = sqrt(b1 ** 2 - b2 ** 2)
 
         B = 0.5 * b / self.Rnozzle
+        print('\t\tsaving impact_param.npy')
         save(join(o_dir, 'impact_param.npy'), r_[b, B])
+        return None
 
     def calc_Reynolds(self, time, overwrite=False):
         print('\tCalculating Reynolds number...')
@@ -278,6 +314,14 @@ class readOFcase:
         if exists(join(o_dir, 'Re_collision.npy')) and not overwrite:
             return None
 
+        try:
+            U1 = self.load_post_field('U.pregel.npy', time)
+            U2 = self.load_post_field('U.crosslinker.npy', time)
+        except FileExistsError:
+            self.calc_Ucm(time)
+
+        self.depends(['U.pregel.npy', 'U.crosslinker.npy'], time)
+
         U1 = self.load_post_field('U.pregel.npy', time)
         U2 = self.load_post_field('U.crosslinker.npy', time)
 
@@ -286,6 +330,7 @@ class readOFcase:
         nu2 = self.transport_properties['crosslinker']['viscosity']
 
         Re_collision = 4 * self.Rnozzle * Ur / (nu1 + nu2)
+        print('\t\tsaving Re_collision.npy')
         save(join(o_dir, 'Re_collision.npy'), Re_collision)
 
     def calc_Weber(self, time, overwrite=False):
@@ -296,6 +341,8 @@ class readOFcase:
         if exists(join(o_dir, 'We_collision.npy')) and not overwrite:
             return None
 
+        self.depends(['U.pregel.npy', 'U.crosslinker.npy'], time)
+
         U1 = self.load_post_field('U.pregel.npy', time)
         U2 = self.load_post_field('U.crosslinker.npy', time)
 
@@ -305,6 +352,7 @@ class readOFcase:
 
         We_collision = (rho1 + rho2) * self.Rnozzle * \
             Ur * Ur / self.surface_tension
+        print('\t\tsaving We_collision.npy')
         save(join(o_dir, 'We_collision.npy'), We_collision)
 
     def calc_gradU_deriv(self, time, overwrite=False):
@@ -330,26 +378,26 @@ class readOFcase:
         N = len(A)
 
         omega = array(list(map(asymmVec, A)))
-        save(join(o_dir, 'vorticity.npy'), omega)
         print('\t\tsaving vorticity.npy')
+        save(join(o_dir, 'vorticity.npy'), omega)
 
         xi = array(list(map(magSq, omega)))
-        save(join(o_dir, 'enstrophy.npy'), xi)
         print('\t\tsaving enstrophy.npy')
+        save(join(o_dir, 'enstrophy.npy'), xi)
         del omega
 
         Q = array(list(map(Qinv, A)))
-        save(join(o_dir, 'Q.npy'), Q)
         print('\t\tsaving Q.npy')
+        save(join(o_dir, 'Q.npy'), Q)
 
         R = array(list(map(Rinv, A)))
-        save(join(o_dir, 'R.npy'), R)
         print('\t\tsaving R.npy')
+        save(join(o_dir, 'R.npy'), R)
         del R
 
+        print('\t\tsaving visc_dissipation_density.npy')
         save(join(o_dir, 'visc_dissipation_density.npy'),
              2.0 * (xi - 2.0 * Q))
-        print('\t\tsaving visc_dissipation_density.npy')
         del xi
         del Q
 
@@ -357,13 +405,12 @@ class readOFcase:
         for i in range(N):
             # W[i] = eigvecsh(symmTraceless(A[i]))
             W[i] = eigvecs(A[i])
+        print('\t\tsaving eigenvector_#.npy')
         save(join(o_dir, 'eigenvector_1.npy'), W[:,  0:3])
         save(join(o_dir, 'eigenvector_2.npy'), W[:,  3:6])
         save(join(o_dir, 'eigenvector_3.npy'), W[:,  6:9])
         save(join(o_dir,   'eigenvalues.npy'), W[:, 9:12])
-        print('\t\tsaving eigenvector_#.npy')
         del W
-
         return None
 
     def calc_vorticity(self, time, overwrite=False):
@@ -377,6 +424,7 @@ class readOFcase:
 
         gradU = self.load_field('grad(U)', t_dir)
         W = vstack(list(map(get_vorticity, gradU)))
+        print('\t\tsaving vorticity.npy')
         save(join(o_dir, 'vorticity.npy'), W)
         return None
 
@@ -389,8 +437,10 @@ class readOFcase:
         if exists(join(o_dir, 'enstrophy.npy')) and not overwrite:
             return None
 
+        self.depends(['vorticity.npy'], time)
         W = self.load_post_field('vorticity.npy', time)
         xi = 0.5 * norm(W, axis=1)**2
+        print('\t\tsaving enstrophy.npy')
         save(join(o_dir, 'enstrophy.npy'), xi)
         return None
 
@@ -405,6 +455,7 @@ class readOFcase:
 
         gradU = self.load_field('grad(U)', t_dir)
         Q = array(list(map(calc_2nd_inv, gradU)))
+        print('\t\tsaving Q.npy')
         save(join(o_dir, 'Q.npy'), Q)
         return None
 
@@ -419,6 +470,7 @@ class readOFcase:
 
         gradU = self.load_field('grad(U)', t_dir)
         R = array(list(map(calc_3rd_inv, gradU)))
+        print('\t\tsaving R.npy')
         save(join(o_dir, 'R.npy'), R)
         return None
 
@@ -439,6 +491,7 @@ class readOFcase:
             self.load_mesh()
 
         dS = dSigma(alpha1, alpha2, gradAlpha1, gradAlpha2, self.V)
+        print('\t\tsaving dSigma.npy')
         save(join(o_dir, 'dSigma.npy'), dS)
 
     def calc_contact_area(self, time, overwrite=False):
@@ -450,9 +503,12 @@ class readOFcase:
         if exists(join(o_dir, 'contact_surface_area.npy')) and not overwrite:
             return None
 
+        self.depends(['dSigma.npy'], time)
         dS = self.load_post_field('dSigma.npy', time)
         S = sum(norm(dS, axis=1))
+        print('\t\tsaving contact_surface_area.npy')
         save(join(o_dir, 'contact_surface_area.npy'), S)
+        return None
 
     def calc_volume_mixture(self, time, overwrite=False):
         print('\tCalculating volume of the mixture...')
@@ -470,7 +526,9 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
 
-        save(join(o_dir, 'mixtureVolume.npy'), 4 * sum(alpha1 * alpha2 * self.V))
+        print('\t\tsaving mixtureVolume.npy')
+        save(join(o_dir, 'mixtureVolume.npy'),
+             4 * sum(alpha1 * alpha2 * self.V))
         return None
 
     def calc_segregation(self, time, overwrite=False):
@@ -488,6 +546,8 @@ class readOFcase:
 
         alpha1 = self.load_field('alpha.pregel', t_dir)
         alpha2 = self.load_field('alpha.crosslinker', t_dir)
+
+        self.depends(['V.pregel.npy', 'V.crosslinker.npy'], time)
         V1 = self.load_post_field('V.pregel.npy', time)
         V2 = self.load_post_field('V.crosslinker.npy', time)
 
@@ -495,6 +555,7 @@ class readOFcase:
              + (V1 / V2) * dot(alpha2**2, self.V)
              - 2.0 * dot(alpha1 * alpha2, self.V)) / (V1 + V2)
 
+        print('\t\tsaving segregation.npy')
         save(join(o_dir, 'segregation.npy'), seg)
         return None
 
@@ -521,6 +582,7 @@ class readOFcase:
         dv1 = alpha1 * self.V
         dv2 = alpha2 * self.V
 
+        print('\t\tsaving scalar_dissipation_density.npy')
         save(join(o_dir, 'scalar_dissipation_density.npy'),
              (dv1 * magGradAlpha2**2 + dv2 * magGradAlpha1**2))
         return None
@@ -533,8 +595,11 @@ class readOFcase:
 
         if exists(join(o_dir, 'scalar_dissipation_rate.npy')) and not overwrite:
             return None
+        self.depends(['scalar_dissipation_density.npy'], time)
         eps_D = self.load_post_field('scalar_dissipation_density.npy', time)
-        save(join(o_dir, 'scalar_dissipation_rate.npy'), self.diffusivity * sum(eps_D))
+        print('\t\tsaving scalar_dissipation_rate.npy')
+        save(join(o_dir, 'scalar_dissipation_rate.npy'),
+             self.diffusivity * sum(eps_D))
         return None
 
     def calc_classification(self, time, overwrite=False):
@@ -546,10 +611,12 @@ class readOFcase:
         if exists(join(o_dir, 'classification.npz')) and not overwrite:
             return None
 
+        self.depends(['Q.npy', 'R.npy'], time)
         Q = self.load_post_field('Q.npy', time)
         R = self.load_post_field('R.npy', time)
         n = 2 * (R > zeros_like(R)) +\
             (4 * Q ** 3 + 27 * R ** 2 > zeros_like(Q))
+        print('\t\tsaving classification.npz')
         savez_compressed(join(o_dir, 'classification.npz'), n)
         return None
 
@@ -562,8 +629,10 @@ class readOFcase:
         if exists(join(o_dir, 'visc_dissipation_density.npy')) and not overwrite:
             return None
 
+        self.depends(['enstrophy.npy', 'Q.npy'], time)
         enstrophy = self.load_post_field('enstrophy.npy', time)
         Q = self.load_post_field('Q.npy', time)
+        print('\t\tsaving visc_dissipation_density.npy')
         save(join(o_dir, 'visc_dissipation_density.npy'),
              2.0 * (enstrophy - 2.0 * Q))
         return None
@@ -589,7 +658,9 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
 
+        self.depends(['visc_dissipation_density.npy'], time)
         eps = self.load_post_field('visc_dissipation_density.npy', time)
+        print('\t\tsaving visc_dissipation.npy')
         save(join(o_dir, 'visc_dissipation.npy'),
              dot(eps * self.V, eta1 * alpha1 + eta2 * alpha2))
         return None
@@ -636,19 +707,22 @@ class readOFcase:
             not overwrite):
             return None
 
+        self.depends(['dSigma.npy', 'eigenvector_1.npy',
+                      'eigenvector_2.npy', 'eigenvector_3.npy'], time)
         dS = self.load_post_field('dSigma.npy', time)
         E1 = self.load_post_field('eigenvector_1.npy', time)
         E2 = self.load_post_field('eigenvector_2.npy', time)
         E3 = self.load_post_field('eigenvector_3.npy', time)
 
-        S = sum(norm(dS, axis=1))
-        save(join(o_dir, 'contact_surface_area.npy'), S)
         pE1 = sum(abs(sum(E1 * dS, axis=1)))
         pE2 = sum(abs(sum(E2 * dS, axis=1)))
         pE3 = sum(abs(sum(E3 * dS, axis=1)))
 
+        print('\t\tsaving eigvec_1_projection.npy')
         save(join(o_dir, 'eigvec_1_projection.npy'), pE1)
+        print('\t\tsaving eigvec_2_projection.npy')
         save(join(o_dir, 'eigvec_2_projection.npy'), pE2)
+        print('\t\tsaving eigvec_3_projection.npy')
         save(join(o_dir, 'eigvec_3_projection.npy'), pE3)
         return pE1, pE2, pE3
 
@@ -660,9 +734,11 @@ class readOFcase:
         if exists(join(o_dir, 'topology_surface_area.npy')) and not overwrite:
             return None
 
+        self.depends(['classification.npz', 'dSigma.npy'], time)
         TC = self.load_post_field('classification.npz', time)['arr_0']
         dS = norm(self.load_post_field('dSigma.npy', time), axis=1)
 
+        print('\t\tsaving topology_surface_area.npy')
         save(join(o_dir, 'topology_surface_area.npy'),
              array([dot(TC == i, dS) for i in range(4)]))
         return None
@@ -675,9 +751,12 @@ class readOFcase:
         if exists(join(o_dir, 'topology_diffusive.npy')) and not overwrite:
             return None
 
+        self.depends(['classification.npz', 'scalar_dissipation_density.npy'],
+                     time)
         TC = self.load_post_field('classification.npz', time)['arr_0']
         dV = self.load_post_field('scalar_dissipation_density.npy', time)
 
+        print('\t\tsaving topology_diffusive.npy')
         save(join(o_dir, 'topology_diffusive.npy'),
              self.diffusivity * array([dot(TC == i, dV) for i in range(4)]))
         return None
@@ -701,6 +780,7 @@ class readOFcase:
 
         dV = 4 * alpha1 * alpha2 * self.V
 
+        print('\t\tsaving topology_mixing.npy')
         save(join(o_dir, 'topology_mixing.npy'),
              array([dot(TC == i, dV) for i in range(4)]))
         return None
@@ -717,6 +797,8 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
 
+        self.depends(['classification.npz', 'visc_dissipation_density.npy'],
+                     time)
         TC = self.load_post_field('classification.npz', time)['arr_0']
         eps = self.load_post_field('visc_dissipation_density.npy', time)
 
@@ -729,10 +811,10 @@ class readOFcase:
             * self.transport_properties['crosslinker']['density']
         dEps = (eta1 * alpha1 + eta2 * alpha2) * eps * self.V
 
+        print('\t\tsaving topology_viscous.npy')
         save(join(o_dir, 'topology_viscous.npy'),
              array([dot(TC == i, dEps) for i in range(4)]))
         return None
-
 
     def calc_vortprojection(self, time, overwrite=False):
         print('\tCalculating projection against vorticity...')
@@ -742,9 +824,11 @@ class readOFcase:
         if exists(join(o_dir, 'w_dot_n.npy')) and not overwrite:
             return None
 
+        self.depends(['vorticity.npy', 'dSigma.npy'], time)
         W = self.load_post_field('vorticity.npy', time)
         dS = self.load_post_field('dSigma.npy', time)
         magW = norm(W, axis=1)
+        print('\t\tsaving w_dot_n.npy')
         save(join(o_dir, 'w_dot_n.npy'),
              sum(abs(sum(W * dS, axis=1) / magW)))
         return None
@@ -765,8 +849,10 @@ class readOFcase:
             self.load_mesh()
         w = self.R[:, 2] >= 0.0002 * ones_like(self.R[:, 2])
 
+        print('\t\tsaving surface_energy.npy')
         save(join(o_dir, 'surface_energy.npy'),
-             self.surface_tension * dot(self.V * w, norm(gradAlpha1 + gradAlpha2, axis=1)))
+             self.surface_tension * dot(self.V * w,
+                                        norm(gradAlpha1 + gradAlpha2, axis=1)))
         return None
 
     def calc_kinetic_energy(self, time, overwrite=False):
@@ -814,8 +900,10 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
 
+        print('\t\tsaving kinetic_energy.npy')
         save(join(o_dir, 'kinetic_energy.npy'),
-             0.5 * dot(rho1 * alpha1 + rho2 * alpha2, self.V * norm(U, axis=1)**2))
+             0.5 * dot(rho1 * alpha1 + rho2 * alpha2,
+                       self.V * norm(U, axis=1)**2))
         return None
 
     def calc_angular_momentum(self, time, overwrite=False):
@@ -842,6 +930,7 @@ class readOFcase:
         RcrossU = cross(self.R, U, axis=1)
         L = sum(prod(M, RcrossU), axis=0)
 
+        print('\t\tsaving angular_momentum.npy')
         save(join(o_dir, 'angular_momentum.npy'), L)
         return None
 
@@ -866,6 +955,7 @@ class readOFcase:
 
         alpha = self.load_field('alpha.pregel', t_dir) \
             + self.load_field('alpha.crosslinker', t_dir)
+        self.depends(['Q.npy', 'R.npy'], time)
         Q = self.load_post_field('Q.npy', time)
         R = self.load_post_field('R.npy', time)
 
@@ -873,14 +963,19 @@ class readOFcase:
         idx_gas = alpha < ones_like(alpha) * tol
         idx_liq = alpha > ones_like(alpha) * (1.0 - tol)
 
-        P_gas, X, Y = histogram2d(R[idx_gas], Q[idx_gas], weights=self.V[idx_gas],
+        P_gas, X, Y = histogram2d(R[idx_gas], Q[idx_gas],
+                                  weights=self.V[idx_gas],
                                   bins=bins, range=extent)
 
-        P_liq, X, Y = histogram2d(R[idx_liq], Q[idx_liq], weights=self.V[idx_liq],
+        P_liq, X, Y = histogram2d(R[idx_liq], Q[idx_liq],
+                                  weights=self.V[idx_liq],
                                   bins=bins, range=extent)
 
+        print('\t\tsaving QR_hist_bins.npy')
         save(join(o_dir, 'QR_hist_bins.npy'), [X, Y])
+        print('\t\tsaving QR_histogram_g.npy')
         save(join(o_dir, 'QR_histogram_g.npy'), P_gas)
+        print('\t\tsaving QR_histogram_l.npy')
         save(join(o_dir, 'QR_histogram_l.npy'), P_liq)
 
         return None
@@ -1026,6 +1121,7 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
 
+        self.depends(['dSigma.npy'], time)
         m = self.load_post_field('dSigma.npy', time)
         A = self.load_field('grad(U)', t_dir)
 
@@ -1034,10 +1130,11 @@ class readOFcase:
             A[:, 4] * m[:, 1]**2 +
             A[:, 8] * m[:, 2]**2 +
             (A[:, 1] + A[:, 3]) * m[:, 0] * m[:, 1] +
-            (A[:, 2] + A[:, 6]) * m[:, 0] * m[:, 2] +
-            (A[:, 5] + A[:, 7]) * m[:, 1] * m[:, 2]
+            (A[:, 5] + A[:, 7]) * m[:, 1] * m[:, 2] +
+            (A[:, 2] + A[:, 6]) * m[:, 2] * m[:, 0]
         ) / self.V**2
 
+        print(f'\t\tsaving {ofname}')
         save(join(o_dir, ofname), STI)
         return None
 
@@ -1062,9 +1159,11 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
 
+        self.depends(['scalar_turbulence_interaction_density.npy'], time)
         dV = (1.0 - self.load_field('alpha.air', t_dir)) * self.V
         STI = self.load_post_field('scalar_turbulence_interaction_density.npy',
                                    time)
+        print(f'\t\tsaving {ofname}')
         save(join(o_dir, ofname), dot(STI, dV))
         return None
 
