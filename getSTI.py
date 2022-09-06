@@ -26,14 +26,15 @@ def main():
 
     def _sti(time, overwrite=False, clean=False):
 
-        if rc.check_done(time) and not overwrite:
-            return None
+        if overwrite or not rc.check_done(time):
 
-        rc.calc_dSigma(time, overwrite=overwrite)
-        rc.calc_scalar_turbulence_interaction_density(time,
-                                                      overwrite=overwrite)
-        rc.calc_scalar_turbulence_interaction(time,
-                                              overwrite=overwrite)
+            rc.calc_dSigma(time, overwrite=overwrite)
+            rc.calc_scalar_turbulence_interaction_density(time,
+                                                          overwrite=overwrite)
+            rc.calc_scalar_turbulence_interaction(time,
+                                                  overwrite=overwrite)
+        if clean:
+            rc.clean(time)
 
     if time is None:
         rc.forAllTimes(_sti,
@@ -42,9 +43,6 @@ def main():
                        overwrite=ow)
     else:
         _sti(time, overwrite=ow, clean=clean)
-
-    if clean:
-        rc.clean(time)
 
     return None
 
