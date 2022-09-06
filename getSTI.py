@@ -5,7 +5,6 @@ from readopenfoamcase import readOFcase
 
 
 def main():
-
     case = sys.argv[1]
     interval = None
     time = None
@@ -25,9 +24,7 @@ def main():
     rc = readOFcase(case)
     rc.set_nozzle_radius(2.5e-4)
 
-    def _scalar_turbulent_interaction(time,
-                                      overwrite=False,
-                                      clean=False):
+    def _sti(time, overwrite=False, clean=False):
 
         if rc.check_done(time) and not overwrite:
             return None
@@ -38,19 +35,17 @@ def main():
         rc.calc_scalar_turbulence_interaction(time,
                                               overwrite=overwrite)
 
-        if clean:
-            rc.clean(time)
-        return None
-
     if time is None:
-        rc.forAllTimes(_scalar_turbulent_interaction,
+        rc.forAllTimes(_sti,
                        interval=interval,
                        clean=clean,
                        overwrite=ow)
     else:
-        _scalar_turbulent_interaction(time,
-                                      overwrite=ow,
-                                      clean=clean)
+        _sti(time, overwrite=ow, clean=clean)
+
+    if clean:
+        rc.clean(time)
+
     return None
 
 
