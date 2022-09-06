@@ -1013,7 +1013,7 @@ class readOFcase:
 
         """
 
-        print('\tCalculating enstrophy-dissipation histogram...')
+        print('\tCalculating scalar-turbulence interaction density...')
         t_dir = join(self.case_dir, time)
         o_dir = join(self.out_dir, time)
         makedirs(o_dir, exist_ok=True)
@@ -1026,7 +1026,7 @@ class readOFcase:
         if not self.mesh_loaded:
             self.load_mesh()
 
-        m = self.load_post_field('dSigma.npy', time) / self.V
+        m = self.load_post_field('dSigma.npy', time)
         A = self.load_field('grad(U)', t_dir)
 
         STI = -2.0 * self.diffusivity * (
@@ -1036,7 +1036,7 @@ class readOFcase:
             (A[:, 1] + A[:, 3]) * m[:, 0] * m[:, 1] +
             (A[:, 2] + A[:, 6]) * m[:, 0] * m[:, 2] +
             (A[:, 5] + A[:, 7]) * m[:, 1] * m[:, 2]
-        )
+        ) / self.V**2
 
         save(join(o_dir, ofname), STI)
         return None
