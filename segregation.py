@@ -7,4 +7,3 @@ rc = readOFcase(case)
 rc.set_nozzle_radius(R_nozzle)
 
 rc.forAllTimes(rc.calc_segregation)
-time = rc.times[120]

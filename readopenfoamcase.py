@@ -113,8 +113,6 @@ class readOFcase:
 
         return t_dirs
 
-
-
     def get_application(self):
         with open(join(self.system_dir, 'controlDict'), 'r') as handler:
             for ln in handler.readlines():
